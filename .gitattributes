@@ -1,0 +1,9 @@
+.gitattributes text eol=lf
+README.md text eol=lf
+*.sh text eol=lf
+*.service text eol=lf
+*.sha256 text eol=lf
+*.version text eol=lf
+rust-panel binary
+xboard-node binary
+*.gz binary

@@ -1,0 +1,25 @@
+[Unit]
+Description=rust-panel (proxy-service management panel)
+Documentation=https://example.local/rust-panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/rust-panel
+EnvironmentFile=/etc/rust-panel/panel.env
+ExecStart=/opt/rust-panel/rust-panel
+# The in-panel "重启面板" button exits cleanly (code 0); Restart=always relaunches it.
+Restart=always
+RestartSec=1
+# Give the DB/socket a moment on stop.
+TimeoutStopSec=10
+LimitNOFILE=1048576
+# Hardening (loosen if it blocks file/DB access on your box).
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
