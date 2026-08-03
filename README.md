@@ -44,6 +44,7 @@ release `v1.0.7` is verified with all three of these checks before activation:
 | `xboard-node.sha256` | Agent content checksum |
 | `xboard-node.version` | Expected Agent release version |
 | `web.tar.gz` | Admin UI and user portal |
+| `THIRD_PARTY_NOTICES.md` | Third-party software license notices |
 | `install-panel.sh` | Panel installer and updater |
 | `install-node.sh` | Agent installer |
 | `rust-panel.service` | Panel systemd unit |
