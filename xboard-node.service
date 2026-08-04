@@ -6,15 +6,13 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/xboard-node
+EnvironmentFile=-/etc/xboard-node/credentials.env
 ExecStart=/opt/xboard-node/xboard-node -c /etc/xboard-node/config.yml
 Restart=always
 RestartSec=2
-# Proxy kernels (sing-box/xray) open many sockets and need network privileges.
-
-User=root
+LimitNOFILE=1048576
+NoNewPrivileges=true
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
-# Hot-reload: the agent watches config.yml, so `systemctl reload` isn't required
-# for config changes; the panel also pushes config over WebSocket in real time.
 
 [Install]
 WantedBy=multi-user.target

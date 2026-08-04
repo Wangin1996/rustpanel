@@ -155,7 +155,8 @@ if [ -f "$ENV_FILE" ]; then
 else
   SECRET="$(random_hex 32)"
   IDENTITY_KEY="$(random_hex 32)"
-  PW="$(random_hex 16)"
+  # 112 random bits plus every required character class; safe in panel.env.
+  PW="Aa9-$(random_hex 14)"
   cat > "$STAGE/panel.env" <<EOF
 APP_BIND=$BIND
 APP_ENV=prod
