@@ -1,63 +1,154 @@
 #!/usr/bin/env bash
-# rust-panel one-click installer (SQLite backend, systemd).
+# rust-panel one-click installer (single MySQL backend, systemd).
 #
-# Usage:
+# Interactive install:
 #   curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-panel.sh | sudo bash
-#   curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-panel.sh | sudo bash -s -- 0.0.0.0:8080
-#   # Behind nginx/caddy (recommended): use 127.0.0.1:8080
 #
-# Override download base with env RP_BASE.
+# Non-interactive install:
+#   curl -fsSL .../install-panel.sh | \
+#     sudo env RP_DATABASE_URL='mysql://user:pass@127.0.0.1:3306/rust_panel' bash
 set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-0.0.0.0:8080}"
+INSTALL_DIR=/opt/rust-panel
+CONFIG_DIR=/etc/rust-panel
+ENV_FILE="$CONFIG_DIR/panel.env"
 
 [ "$(id -u)" = "0" ] || { echo "please run as root (sudo)"; exit 1; }
-ARCH="$(uname -m)"; [ "$ARCH" = "x86_64" ] || { echo "only x86_64 supported (got $ARCH)"; exit 1; }
-command -v curl >/dev/null || { echo "curl required"; exit 1; }
-command -v tar  >/dev/null || { echo "tar required"; exit 1; }
-command -v systemctl >/dev/null || { echo "systemd required"; exit 1; }
+ARCH="$(uname -m)"
+[ "$ARCH" = "x86_64" ] || { echo "only x86_64 is supported (got $ARCH)"; exit 1; }
+command -v curl >/dev/null || { echo "curl is required"; exit 1; }
+command -v tar >/dev/null || { echo "tar is required"; exit 1; }
+command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }
 
-echo ">> [1/4] downloading binary + web assets + service ..."
-mkdir -p /opt/rust-panel /etc/rust-panel
-curl -fsSL "$BASE/rust-panel" -o /opt/rust-panel/rust-panel.new
-mv -f /opt/rust-panel/rust-panel.new /opt/rust-panel/rust-panel
-chmod +x /opt/rust-panel/rust-panel
-WEB_ARCHIVE="$(mktemp /tmp/rp-web.XXXXXX)"
-WEB_STAGE="$(mktemp -d /opt/rust-panel/.web-stage.XXXXXX)"
-cleanup_web() {
-  rm -f "$WEB_ARCHIVE"
-  rm -rf "$WEB_STAGE"
+mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+STAGE="$(mktemp -d /tmp/rust-panel-install.XXXXXX)"
+WAS_ACTIVE=0
+INSTALL_STARTED=0
+cleanup() {
+  rm -rf "$STAGE"
+  if [ "$WAS_ACTIVE" = 1 ] && [ "$INSTALL_STARTED" = 0 ]; then
+    systemctl start rust-panel >/dev/null 2>&1 || true
+  fi
 }
-trap cleanup_web EXIT
-curl -fsSL "$BASE/web.tar.gz" -o "$WEB_ARCHIVE"
-tar xzf "$WEB_ARCHIVE" -C "$WEB_STAGE"
-[ -f "$WEB_STAGE/xboard-admin/dist/index.html" ] || { echo "invalid web package: admin index missing"; exit 1; }
-[ -f "$WEB_STAGE/user-portal/index.html" ] || { echo "invalid web package: user portal missing"; exit 1; }
-[ -f "$WEB_STAGE/user-portal/portal.css" ] || { echo "invalid web package: portal stylesheet missing"; exit 1; }
-[ -f "$WEB_STAGE/user-portal/portal.js" ] || { echo "invalid web package: portal script missing"; exit 1; }
-[ -f "$WEB_STAGE/user-portal/dashboard.js" ] || { echo "invalid web package: dashboard script missing"; exit 1; }
-[ -f "$WEB_STAGE/user-portal/dashboard.html" ] || { echo "invalid web package: dashboard markup missing"; exit 1; }
+trap cleanup EXIT
 
-# Hashed Vite chunks must be replaced as one set. Overlay extraction leaves old
-# chunks usable, allowing a cached index.html to keep loading a stale frontend.
-mkdir -p /opt/rust-panel/xboard-admin
-rm -rf /opt/rust-panel/xboard-admin/dist /opt/rust-panel/user-portal
-mv "$WEB_STAGE/xboard-admin/dist" /opt/rust-panel/xboard-admin/dist
-mv "$WEB_STAGE/user-portal" /opt/rust-panel/user-portal
-cleanup_web
-trap - EXIT
-curl -fsSL "$BASE/rust-panel.service" -o /etc/systemd/system/rust-panel.service
+random_hex() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex "$1"
+  else
+    head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'
+  fi
+}
 
-echo ">> [2/4] preparing env ..."
-if [ ! -f /etc/rust-panel/panel.env ]; then
-  SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-  IDENTITY_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-  PW="$(openssl rand -base64 12 2>/dev/null | tr -d '/+=' || echo "changeme$(date +%s)")"
-  cat > /etc/rust-panel/panel.env <<EOF
+urlencode() {
+  local LC_ALL=C value="$1" out="" char hex index
+  for ((index = 0; index < ${#value}; index++)); do
+    char="${value:index:1}"
+    case "$char" in
+      [a-zA-Z0-9.~_-]) out+="$char" ;;
+      *) printf -v hex '%%%02X' "'$char"; out+="$hex" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+prompt_value() {
+  local variable="$1" label="$2" default="$3" secret="${4:-0}" value=""
+  if [ ! -r /dev/tty ]; then
+    echo "no interactive terminal; set RP_DATABASE_URL for unattended installation" >&2
+    exit 1
+  fi
+  if [ "$secret" = 1 ]; then
+    read -r -s -p "$label: " value </dev/tty
+    echo >/dev/tty
+  else
+    read -r -p "$label [$default]: " value </dev/tty
+    value="${value:-$default}"
+  fi
+  printf -v "$variable" '%s' "$value"
+}
+
+mysql_url_from_input() {
+  local host="${RP_MYSQL_HOST:-127.0.0.1}"
+  local port="${RP_MYSQL_PORT:-3306}"
+  local database="${RP_MYSQL_DATABASE:-rust_panel}"
+  local user="${RP_MYSQL_USER:-rust_panel}"
+  local password="${RP_MYSQL_PASSWORD:-}"
+
+  if [ -z "${RP_MYSQL_HOST+x}" ]; then prompt_value host "MySQL host" "$host"; fi
+  if [ -z "${RP_MYSQL_PORT+x}" ]; then prompt_value port "MySQL port" "$port"; fi
+  if [ -z "${RP_MYSQL_DATABASE+x}" ]; then prompt_value database "MySQL database" "$database"; fi
+  if [ -z "${RP_MYSQL_USER+x}" ]; then prompt_value user "MySQL user" "$user"; fi
+  if [ -z "$password" ]; then prompt_value password "MySQL password" "" 1; fi
+
+  [ -n "$host" ] && [ -n "$port" ] && [ -n "$database" ] && [ -n "$user" ] && [ -n "$password" ] || {
+    echo "all MySQL connection fields are required" >&2
+    exit 1
+  }
+  case "$port" in *[!0-9]*|'') echo "invalid MySQL port" >&2; exit 1;; esac
+  if [[ "$host" == *:* && "$host" != \[*\] ]]; then host="[$host]"; fi
+  MYSQL_URL="mysql://$(urlencode "$user"):$(urlencode "$password")@${host}:${port}/$(urlencode "$database")"
+}
+
+set_env_value() {
+  local file="$1" key="$2" value="$3" output="$file.tmp" found=0 line
+  : > "$output"
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [[ "$line" == "$key="* ]]; then
+      printf '%s=%s\n' "$key" "$value" >> "$output"
+      found=1
+    else
+      printf '%s\n' "$line" >> "$output"
+    fi
+  done < "$file"
+  if [ "$found" = 0 ]; then printf '%s=%s\n' "$key" "$value" >> "$output"; fi
+  mv "$output" "$file"
+}
+
+echo ">> [1/5] downloading release artifacts ..."
+curl -fsSL "$BASE/rust-panel" -o "$STAGE/rust-panel"
+curl -fsSL "$BASE/rust-panel-migrate" -o "$STAGE/rust-panel-migrate"
+curl -fsSL "$BASE/web.tar.gz" -o "$STAGE/web.tar.gz"
+curl -fsSL "$BASE/rust-panel.service" -o "$STAGE/rust-panel.service"
+chmod +x "$STAGE/rust-panel" "$STAGE/rust-panel-migrate"
+mkdir -p "$STAGE/web"
+tar xzf "$STAGE/web.tar.gz" -C "$STAGE/web"
+[ -f "$STAGE/web/xboard-admin/dist/index.html" ] || { echo "invalid web package: admin index missing"; exit 1; }
+[ -f "$STAGE/web/user-portal/index.html" ] || { echo "invalid web package: portal index missing"; exit 1; }
+[ -f "$STAGE/web/user-portal/portal.css" ] || { echo "invalid web package: portal stylesheet missing"; exit 1; }
+[ -f "$STAGE/web/user-portal/portal.js" ] || { echo "invalid web package: portal script missing"; exit 1; }
+[ -f "$STAGE/web/user-portal/dashboard.js" ] || { echo "invalid web package: dashboard script missing"; exit 1; }
+[ -f "$STAGE/web/user-portal/dashboard.html" ] || { echo "invalid web package: dashboard markup missing"; exit 1; }
+
+OLD_DATABASE_URL=""
+if [ -f "$ENV_FILE" ]; then
+  OLD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' "$ENV_FILE" | tail -n 1)"
+fi
+if [ -n "${RP_DATABASE_URL:-}" ]; then
+  MYSQL_URL="$RP_DATABASE_URL"
+elif [[ "$OLD_DATABASE_URL" == mysql://* ]]; then
+  MYSQL_URL="$OLD_DATABASE_URL"
+else
+  echo ">> MySQL connection (the database and user must already exist)"
+  mysql_url_from_input
+fi
+[[ "$MYSQL_URL" == mysql://* ]] || { echo "DATABASE_URL must start with mysql://" >&2; exit 1; }
+
+NEW_ADMIN=0
+PW=""
+if [ -f "$ENV_FILE" ]; then
+  cp "$ENV_FILE" "$STAGE/panel.env"
+else
+  SECRET="$(random_hex 32)"
+  IDENTITY_KEY="$(random_hex 32)"
+  PW="$(random_hex 16)"
+  cat > "$STAGE/panel.env" <<EOF
 APP_BIND=$BIND
 APP_ENV=prod
-DATABASE_URL=sqlite:///opt/rust-panel/panel.db
+DATABASE_URL=$MYSQL_URL
+DB_MAX_CONNECTIONS=20
 BUSINESS_TIMEZONE=Asia/Shanghai
 JWT_SECRET=$SECRET
 JWT_TTL_SECS=7200
@@ -84,60 +175,82 @@ ADMIN_DIST=/opt/rust-panel/xboard-admin/dist
 USER_PORTAL_DIR=/opt/rust-panel/user-portal
 RUST_LOG=info,rust_panel=info
 EOF
-  chmod 600 /etc/rust-panel/panel.env
   NEW_ADMIN=1
 fi
-
-# Existing installations also need a stable panel identity. Generate it once
-# and preserve it across all future upgrades.
-if ! grep -q '^PANEL_IDENTITY_KEY=' /etc/rust-panel/panel.env; then
-  IDENTITY_KEY="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-  printf '\nPANEL_IDENTITY_KEY=%s\n' "$IDENTITY_KEY" >> /etc/rust-panel/panel.env
-  chmod 600 /etc/rust-panel/panel.env
+set_env_value "$STAGE/panel.env" DATABASE_URL "$MYSQL_URL"
+if ! grep -q '^DB_MAX_CONNECTIONS=' "$STAGE/panel.env"; then
+  printf 'DB_MAX_CONNECTIONS=20\n' >> "$STAGE/panel.env"
+fi
+if ! grep -q '^PANEL_IDENTITY_KEY=' "$STAGE/panel.env"; then
+  printf 'PANEL_IDENTITY_KEY=%s\n' "$(random_hex 32)" >> "$STAGE/panel.env"
+fi
+if ! grep -q '^BUSINESS_TIMEZONE=' "$STAGE/panel.env"; then
+  printf 'BUSINESS_TIMEZONE=Asia/Shanghai\n' >> "$STAGE/panel.env"
+fi
+if ! grep -q '^TRUSTED_PROXIES=' "$STAGE/panel.env"; then
+  printf 'TRUSTED_PROXIES=127.0.0.1,::1\n' >> "$STAGE/panel.env"
+fi
+if grep -qx 'JWT_TTL_SECS=86400' "$STAGE/panel.env"; then
+  set_env_value "$STAGE/panel.env" JWT_TTL_SECS 7200
 fi
 
-if ! grep -q '^BUSINESS_TIMEZONE=' /etc/rust-panel/panel.env; then
-  printf '\nBUSINESS_TIMEZONE=Asia/Shanghai\n' >> /etc/rust-panel/panel.env
-  chmod 600 /etc/rust-panel/panel.env
+if systemctl is-active --quiet rust-panel; then
+  WAS_ACTIVE=1
+  systemctl stop rust-panel
 fi
 
-# Keep upgrades non-destructive while making the proxy trust boundary explicit
-# for older installations. Application defaults are identical to this value.
-if ! grep -q '^TRUSTED_PROXIES=' /etc/rust-panel/panel.env; then
-  printf '\nTRUSTED_PROXIES=127.0.0.1,::1\n' >> /etc/rust-panel/panel.env
-  chmod 600 /etc/rust-panel/panel.env
+echo ">> [2/5] checking MySQL and applying schema ..."
+MIGRATE_ARGS=()
+SQLITE_PATH=""
+if [[ "$OLD_DATABASE_URL" == sqlite:* ]]; then
+  SQLITE_PATH="${OLD_DATABASE_URL#sqlite://}"
+  SQLITE_PATH="${SQLITE_PATH%%\?*}"
+  if [[ "$SQLITE_PATH" != /* ]]; then SQLITE_PATH="$INSTALL_DIR/$SQLITE_PATH"; fi
+  [ -f "$SQLITE_PATH" ] || { echo "SQLite database not found: $SQLITE_PATH" >&2; exit 1; }
+  BACKUP_DIR="$INSTALL_DIR/sqlite-backup-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$BACKUP_DIR"
+  cp -p "$SQLITE_PATH" "$BACKUP_DIR/"
+  [ ! -f "$SQLITE_PATH-wal" ] || cp -p "$SQLITE_PATH-wal" "$BACKUP_DIR/"
+  [ ! -f "$SQLITE_PATH-shm" ] || cp -p "$SQLITE_PATH-shm" "$BACKUP_DIR/"
+  echo ">> SQLite backup: $BACKUP_DIR"
+  MIGRATE_ARGS+=(--sqlite "$SQLITE_PATH")
 fi
+DATABASE_URL="$MYSQL_URL" "$STAGE/rust-panel-migrate" "${MIGRATE_ARGS[@]}"
 
-# Migrate the old installer default. Values customized to anything else are
-# preserved exactly as configured by the operator.
-if grep -qx 'JWT_TTL_SECS=86400' /etc/rust-panel/panel.env; then
-  sed -i 's/^JWT_TTL_SECS=86400$/JWT_TTL_SECS=7200/' /etc/rust-panel/panel.env
-  chmod 600 /etc/rust-panel/panel.env
-fi
+echo ">> [3/5] installing binary and web assets ..."
+INSTALL_STARTED=1
+mkdir -p "$INSTALL_DIR/xboard-admin"
+rm -rf "$INSTALL_DIR/xboard-admin/dist" "$INSTALL_DIR/user-portal"
+mv "$STAGE/web/xboard-admin/dist" "$INSTALL_DIR/xboard-admin/dist"
+mv "$STAGE/web/user-portal" "$INSTALL_DIR/user-portal"
+mv "$STAGE/rust-panel" "$INSTALL_DIR/rust-panel"
+chmod +x "$INSTALL_DIR/rust-panel"
+mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
+mv "$STAGE/panel.env" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
 
-echo ">> [3/4] enabling service ..."
+echo ">> [4/5] enabling service ..."
 systemctl daemon-reload
 systemctl enable rust-panel >/dev/null 2>&1 || true
 
-echo ">> [4/4] starting ..."
+echo ">> [5/5] starting ..."
 systemctl restart rust-panel
 sleep 2
 systemctl --no-pager -l status rust-panel | head -n 12 || true
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-ACTIVE_BIND="$(sed -n 's/^APP_BIND=//p' /etc/rust-panel/panel.env | tail -n 1)"
+ACTIVE_BIND="$(sed -n 's/^APP_BIND=//p' "$ENV_FILE" | tail -n 1)"
 ACTIVE_BIND="${ACTIVE_BIND:-$BIND}"
 PORT="${ACTIVE_BIND##*:}"
-echo ""
-echo ">> done.  管理后台: http://${IP:-<本机IP>}:${PORT}/    默认用户门户: http://${IP:-<本机IP>}:${PORT}/app"
-echo ">> 自定义管理/门户路径以面板“访问与安全”设置为准。"
-if [ "${NEW_ADMIN:-0}" = "1" ]; then
-  echo ">> 初始管理员: admin@example.com  /  $PW"
-  echo ">> (可编辑 /etc/rust-panel/panel.env 后 systemctl restart rust-panel)"
+echo
+echo ">> done. Admin: http://${IP:-<server-ip>}:${PORT}/  User portal: http://${IP:-<server-ip>}:${PORT}/app"
+if [ "$NEW_ADMIN" = 1 ]; then
+  echo ">> Initial admin: admin@example.com"
+  echo ">> Initial password: $PW"
 fi
-echo ">> 生产建议前置 nginx/caddy 上 HTTPS。"
+echo ">> Put nginx/caddy with HTTPS in front of the panel for production."
 case "$ACTIVE_BIND" in
   0.0.0.0:*|\[::\]:*)
-    echo ">> security: backend is publicly bound; firewall port ${PORT} or switch APP_BIND to 127.0.0.1:${PORT} after enabling nginx/caddy."
+    echo ">> security: firewall port ${PORT}, or bind to 127.0.0.1 after enabling a reverse proxy."
     ;;
 esac
