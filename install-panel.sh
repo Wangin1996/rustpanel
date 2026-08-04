@@ -11,6 +11,7 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-0.0.0.0:8080}"
+INSTALLER_REVISION=20260804.2
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -93,8 +94,13 @@ mysql_url_from_input() {
 }
 
 set_env_value() {
-  local file="$1" key="$2" value="$3" found=0 line
-  local output="${file}.tmp"
+  local env_path key value output found line
+  env_path="${1:?missing environment file path}"
+  key="${2:?missing environment key}"
+  value="${3-}"
+  output="${env_path}.tmp"
+  found=0
+  line=""
   : > "$output"
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ "$line" == "$key="* ]]; then
@@ -103,11 +109,12 @@ set_env_value() {
     else
       printf '%s\n' "$line" >> "$output"
     fi
-  done < "$file"
+  done < "$env_path"
   if [ "$found" = 0 ]; then printf '%s=%s\n' "$key" "$value" >> "$output"; fi
-  mv "$output" "$file"
+  mv "$output" "$env_path"
 }
 
+echo ">> rust-panel installer revision $INSTALLER_REVISION"
 echo ">> [1/5] downloading release artifacts ..."
 curl -fsSL "$BASE/rust-panel" -o "$STAGE/rust-panel"
 curl -fsSL "$BASE/rust-panel-migrate" -o "$STAGE/rust-panel-migrate"
