@@ -11,7 +11,7 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-0.0.0.0:8080}"
-INSTALLER_REVISION=20260804.2
+INSTALLER_REVISION=20260804.3
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -114,13 +114,21 @@ set_env_value() {
   mv "$output" "$env_path"
 }
 
+OLD_DATABASE_URL=""
+if [ -f "$ENV_FILE" ]; then
+  OLD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' "$ENV_FILE" | tail -n 1)"
+fi
+if [[ "$OLD_DATABASE_URL" == sqlite:* ]]; then
+  echo "existing SQLite installations are no longer supported by this release" >&2
+  exit 1
+fi
+
 echo ">> rust-panel installer revision $INSTALLER_REVISION"
-echo ">> [1/5] downloading release artifacts ..."
+echo ">> [1/4] downloading release artifacts ..."
 curl -fsSL "$BASE/rust-panel" -o "$STAGE/rust-panel"
-curl -fsSL "$BASE/rust-panel-migrate" -o "$STAGE/rust-panel-migrate"
 curl -fsSL "$BASE/web.tar.gz" -o "$STAGE/web.tar.gz"
 curl -fsSL "$BASE/rust-panel.service" -o "$STAGE/rust-panel.service"
-chmod +x "$STAGE/rust-panel" "$STAGE/rust-panel-migrate"
+chmod +x "$STAGE/rust-panel"
 mkdir -p "$STAGE/web"
 tar xzf "$STAGE/web.tar.gz" -C "$STAGE/web"
 [ -f "$STAGE/web/xboard-admin/dist/index.html" ] || { echo "invalid web package: admin index missing"; exit 1; }
@@ -130,10 +138,6 @@ tar xzf "$STAGE/web.tar.gz" -C "$STAGE/web"
 [ -f "$STAGE/web/user-portal/dashboard.js" ] || { echo "invalid web package: dashboard script missing"; exit 1; }
 [ -f "$STAGE/web/user-portal/dashboard.html" ] || { echo "invalid web package: dashboard markup missing"; exit 1; }
 
-OLD_DATABASE_URL=""
-if [ -f "$ENV_FILE" ]; then
-  OLD_DATABASE_URL="$(sed -n 's/^DATABASE_URL=//p' "$ENV_FILE" | tail -n 1)"
-fi
 if [ -n "${RP_DATABASE_URL:-}" ]; then
   MYSQL_URL="$RP_DATABASE_URL"
 elif [[ "$OLD_DATABASE_URL" == mysql://* ]]; then
@@ -207,25 +211,7 @@ if systemctl is-active --quiet rust-panel; then
   systemctl stop rust-panel
 fi
 
-echo ">> [2/5] checking MySQL and applying schema ..."
-MIGRATE_ARGS=()
-SQLITE_PATH=""
-if [[ "$OLD_DATABASE_URL" == sqlite:* ]]; then
-  SQLITE_PATH="${OLD_DATABASE_URL#sqlite://}"
-  SQLITE_PATH="${SQLITE_PATH%%\?*}"
-  if [[ "$SQLITE_PATH" != /* ]]; then SQLITE_PATH="$INSTALL_DIR/$SQLITE_PATH"; fi
-  [ -f "$SQLITE_PATH" ] || { echo "SQLite database not found: $SQLITE_PATH" >&2; exit 1; }
-  BACKUP_DIR="$INSTALL_DIR/sqlite-backup-$(date +%Y%m%d-%H%M%S)"
-  mkdir -p "$BACKUP_DIR"
-  cp -p "$SQLITE_PATH" "$BACKUP_DIR/"
-  [ ! -f "$SQLITE_PATH-wal" ] || cp -p "$SQLITE_PATH-wal" "$BACKUP_DIR/"
-  [ ! -f "$SQLITE_PATH-shm" ] || cp -p "$SQLITE_PATH-shm" "$BACKUP_DIR/"
-  echo ">> SQLite backup: $BACKUP_DIR"
-  MIGRATE_ARGS+=(--sqlite "$SQLITE_PATH")
-fi
-DATABASE_URL="$MYSQL_URL" "$STAGE/rust-panel-migrate" "${MIGRATE_ARGS[@]}"
-
-echo ">> [3/5] installing binary and web assets ..."
+echo ">> [2/4] installing binary and web assets ..."
 INSTALL_STARTED=1
 mkdir -p "$INSTALL_DIR/xboard-admin"
 rm -rf "$INSTALL_DIR/xboard-admin/dist" "$INSTALL_DIR/user-portal"
@@ -237,13 +223,19 @@ mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
 mv "$STAGE/panel.env" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 
-echo ">> [4/5] enabling service ..."
+echo ">> [3/4] enabling service ..."
 systemctl daemon-reload
 systemctl enable rust-panel >/dev/null 2>&1 || true
 
-echo ">> [5/5] starting ..."
+echo ">> [4/4] starting ..."
 systemctl restart rust-panel
 sleep 2
+if ! systemctl is-active --quiet rust-panel; then
+  echo "rust-panel failed to start" >&2
+  systemctl --no-pager -l status rust-panel || true
+  journalctl -u rust-panel -n 50 --no-pager || true
+  exit 1
+fi
 systemctl --no-pager -l status rust-panel | head -n 12 || true
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"

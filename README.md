@@ -21,10 +21,10 @@ MySQL 8.0/8.4 is recommended. On first install, the installer prompts for the
 connection details. Running it again updates the binary and Web assets while
 preserving `/etc/rust-panel/panel.env`.
 
-When upgrading a legacy SQLite installation, the installer backs up the
-SQLite database, migrates and verifies its data with `rust-panel-migrate`, and
-only then switches the service to MySQL. The target MySQL database must exist
-and its business tables must be empty.
+The panel maintains its embedded MySQL schema during normal startup. There is
+no separate migration executable, command, or service. If an existing
+installation still has an SQLite `DATABASE_URL`, the installer stops before
+replacing installed files.
 
 ## Install an Agent
 
@@ -47,7 +47,6 @@ release `v1.0.7` is verified with all three of these checks before activation:
 | File | Purpose |
 | --- | --- |
 | `rust-panel` | Panel backend binary |
-| `rust-panel-migrate` | One-shot SQLite-to-MySQL migration utility |
 | `xboard-node` | Node Agent binary |
 | `xboard-node.sha256` | Agent content checksum |
 | `xboard-node.version` | Expected Agent release version |

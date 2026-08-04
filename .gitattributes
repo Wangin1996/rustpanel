@@ -5,6 +5,5 @@ README.md text eol=lf
 *.sha256 text eol=lf
 *.version text eol=lf
 rust-panel binary
-rust-panel-migrate binary
 xboard-node binary
 *.gz binary
