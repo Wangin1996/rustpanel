@@ -93,7 +93,8 @@ mysql_url_from_input() {
 }
 
 set_env_value() {
-  local file="$1" key="$2" value="$3" output="$file.tmp" found=0 line
+  local file="$1" key="$2" value="$3" found=0 line
+  local output="${file}.tmp"
   : > "$output"
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ "$line" == "$key="* ]]; then
