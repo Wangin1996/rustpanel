@@ -11,7 +11,7 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-0.0.0.0:8080}"
-INSTALLER_REVISION=20260804.3
+INSTALLER_REVISION=20260806.3
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -186,6 +186,7 @@ BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=$PW
 ADMIN_DIST=/opt/rust-panel/xboard-admin/dist
 USER_PORTAL_DIR=/opt/rust-panel/user-portal
+IP2REGION_DIR=/opt/rust-panel/ip2region
 RUST_LOG=info,rust_panel=info
 EOF
   NEW_ADMIN=1
@@ -203,6 +204,10 @@ fi
 if ! grep -q '^TRUSTED_PROXIES=' "$STAGE/panel.env"; then
   printf 'TRUSTED_PROXIES=127.0.0.1,::1\n' >> "$STAGE/panel.env"
 fi
+sed -i '/^IP2REGION_V4_XDB=/d; /^IP2REGION_V6_XDB=/d' "$STAGE/panel.env"
+if ! grep -q '^IP2REGION_DIR=' "$STAGE/panel.env"; then
+  printf 'IP2REGION_DIR=%s/ip2region\n' "$INSTALL_DIR" >> "$STAGE/panel.env"
+fi
 if grep -qx 'JWT_TTL_SECS=86400' "$STAGE/panel.env"; then
   set_env_value "$STAGE/panel.env" JWT_TTL_SECS 7200
 fi
@@ -211,10 +216,14 @@ if systemctl is-active --quiet rust-panel; then
   WAS_ACTIVE=1
   systemctl stop rust-panel
 fi
+systemctl disable --now rust-panel-geoip-update.timer >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/rust-panel-geoip-update.service \
+      /etc/systemd/system/rust-panel-geoip-update.timer \
+      "$INSTALL_DIR/update-geoip.sh"
 
 echo ">> [2/4] installing binary and web assets ..."
 INSTALL_STARTED=1
-mkdir -p "$INSTALL_DIR/xboard-admin"
+mkdir -p "$INSTALL_DIR/xboard-admin" "$INSTALL_DIR/ip2region"
 rm -rf "$INSTALL_DIR/xboard-admin/dist" "$INSTALL_DIR/user-portal"
 mv "$STAGE/web/xboard-admin/dist" "$INSTALL_DIR/xboard-admin/dist"
 mv "$STAGE/web/user-portal" "$INSTALL_DIR/user-portal"
@@ -223,6 +232,7 @@ chmod +x "$INSTALL_DIR/rust-panel"
 mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
 mv "$STAGE/panel.env" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
+rm -f "$INSTALL_DIR/ip2region_v4.xdb" "$INSTALL_DIR/ip2region_v6.xdb"
 
 echo ">> [3/4] enabling service ..."
 systemctl daemon-reload

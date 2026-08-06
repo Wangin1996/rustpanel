@@ -58,3 +58,8 @@ release `v1.0.8` is verified with all three of these checks before activation:
 
 Both binaries target Linux x86_64. Production deployments should expose the
 panel through an HTTPS reverse proxy.
+
+The panel process downloads IPv4 and IPv6 XDB files directly from the official
+ip2region repository. It checks the latest data-file commits at startup and
+every 24 hours, downloads only changed databases, and hot-reloads them without
+restarting the service.

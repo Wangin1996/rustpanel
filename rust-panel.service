@@ -19,6 +19,7 @@ NoNewPrivileges=true
 ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
+ReadWritePaths=/opt/rust-panel/ip2region
 
 [Install]
 WantedBy=multi-user.target
