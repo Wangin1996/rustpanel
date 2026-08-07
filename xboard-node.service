@@ -10,7 +10,6 @@ EnvironmentFile=-/etc/xboard-node/credentials.env
 ExecStart=/opt/xboard-node/xboard-node -c /etc/xboard-node/config.yml
 Restart=always
 RestartSec=2
-LimitNOFILE=1048576
 NoNewPrivileges=true
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
 
