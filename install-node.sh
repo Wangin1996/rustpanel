@@ -7,7 +7,7 @@ URL=""
 TOKEN=""
 NODE_ID=""
 MACHINE_ID=""
-KERNEL="mihomo"
+KERNEL="singbox"
 RECONFIGURE=0
 
 die() {
@@ -39,17 +39,13 @@ if [ -n "$NODE_ID" ] && [ -n "$MACHINE_ID" ]; then
 fi
 [ -n "$NODE_ID" ] || [ -n "$MACHINE_ID" ] || die "--node-id or --machine-id is required"
 [[ "${NODE_ID:-${MACHINE_ID}}" =~ ^[1-9][0-9]*$ ]] || die "node or machine id must be positive"
-case "$KERNEL" in
-  mihomo) ;;
-  xray|singbox) KERNEL="mihomo" ;;
-  *) die "--kernel must be mihomo" ;;
-esac
+case "$KERNEL" in singbox|xray) ;; *) die "--kernel must be singbox or xray" ;; esac
 case "$BASE" in https://*) ;; *) die "download base must use HTTPS" ;; esac
 case "$URL" in http://*|https://*) ;; *) die "panel URL must use HTTP or HTTPS" ;; esac
 [[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\\'* ]] || die "panel URL contains unsafe characters"
 [[ "$TOKEN" =~ ^[A-Za-z0-9._~-]+$ ]] || die "token contains unsafe characters"
 [ "$(uname -m)" = "x86_64" ] || die "only Linux x86_64 is supported"
-for command_name in curl systemctl sha256sum awk install sed; do
+for command_name in curl systemctl sha256sum awk install; do
   command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required"
 done
 
@@ -200,9 +196,6 @@ systemctl stop xboard-node >/dev/null 2>&1 || true
 install -m 755 "$STAGE/xboard-node" "$BINARY_PATH.new"
 mv -f "$BINARY_PATH.new" "$BINARY_PATH"
 rm -f -- "$BINARY_PATH.bak" "$BINARY_PATH.failed" "$BINARY_PATH.update-pending" "$BINARY_PATH.update-pending.tmp"
-if [ -f "$CONFIG_PATH" ]; then
-  sed -i -E '/^[[:space:]]*type:[[:space:]]*(xray|singbox)[[:space:]]*$/s/(xray|singbox)[[:space:]]*$/mihomo/' "$CONFIG_PATH"
-fi
 if [ "$WRITE_CONFIG" -eq 1 ]; then
   install -m 600 "$STAGE/config.yml" "$CONFIG_PATH.new"
   mv -f "$CONFIG_PATH.new" "$CONFIG_PATH"
