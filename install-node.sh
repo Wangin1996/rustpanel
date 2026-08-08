@@ -7,7 +7,7 @@ URL=""
 TOKEN=""
 NODE_ID=""
 MACHINE_ID=""
-KERNEL="singbox"
+KERNEL="mihomo"
 RECONFIGURE=0
 
 die() {
@@ -39,13 +39,16 @@ if [ -n "$NODE_ID" ] && [ -n "$MACHINE_ID" ]; then
 fi
 [ -n "$NODE_ID" ] || [ -n "$MACHINE_ID" ] || die "--node-id or --machine-id is required"
 [[ "${NODE_ID:-${MACHINE_ID}}" =~ ^[1-9][0-9]*$ ]] || die "node or machine id must be positive"
-case "$KERNEL" in singbox|xray) ;; *) die "--kernel must be singbox or xray" ;; esac
+case "$KERNEL" in
+  mihomo|Mihomo|MIHOMO|singbox|SingBox|SINGBOX|sing-box|xray|Xray|XRAY) KERNEL="mihomo" ;;
+  *) die "--kernel must be mihomo" ;;
+esac
 case "$BASE" in https://*) ;; *) die "download base must use HTTPS" ;; esac
 case "$URL" in http://*|https://*) ;; *) die "panel URL must use HTTP or HTTPS" ;; esac
 [[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\\'* ]] || die "panel URL contains unsafe characters"
 [[ "$TOKEN" =~ ^[A-Za-z0-9._~-]+$ ]] || die "token contains unsafe characters"
 [ "$(uname -m)" = "x86_64" ] || die "only Linux x86_64 is supported"
-for command_name in curl systemctl sha256sum awk install; do
+for command_name in curl systemctl sha256sum awk cmp install; do
   command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required"
 done
 
@@ -135,6 +138,8 @@ machine:
   token_env: XBOARD_MACHINE_TOKEN
 kernel:
   type: $KERNEL
+  config_dir: /etc/xboard-node
+  geo_data_dir: /etc/xboard-node
   log_level: warn
 log:
   level: info
@@ -149,6 +154,8 @@ panel:
   node_id: $NODE_ID
 kernel:
   type: $KERNEL
+  config_dir: /etc/xboard-node
+  geo_data_dir: /etc/xboard-node
   log_level: warn
 log:
   level: info
@@ -158,7 +165,16 @@ EOF
   fi
   chmod 600 "$STAGE/config.yml" "$STAGE/credentials.env"
 else
-  echo ">> preserving existing $CONFIG_PATH (use --reconfigure to replace it)"
+  echo ">> preserving existing $CONFIG_PATH (legacy kernel type will be migrated to mihomo)"
+  awk '
+    /^[[:space:]]*type:/ && $0 ~ /(xray|singbox|sing-box)/ {
+      match($0, /^[[:space:]]*/)
+      indent = substr($0, 1, RLENGTH)
+      print indent "type: mihomo"
+      next
+    }
+    { print }
+  ' "$CONFIG_PATH" > "$STAGE/config.yml"
 fi
 
 cat > "$STAGE/xboard-node.service" <<'EOF'
@@ -195,9 +211,11 @@ systemctl stop xboard-node >/dev/null 2>&1 || true
 install -m 755 "$STAGE/xboard-node" "$BINARY_PATH.new"
 mv -f "$BINARY_PATH.new" "$BINARY_PATH"
 rm -f -- "$BINARY_PATH.bak" "$BINARY_PATH.failed" "$BINARY_PATH.update-pending" "$BINARY_PATH.update-pending.tmp"
-if [ "$WRITE_CONFIG" -eq 1 ]; then
+if [ "$WRITE_CONFIG" -eq 1 ] || ! cmp -s "$STAGE/config.yml" "$CONFIG_PATH"; then
   install -m 600 "$STAGE/config.yml" "$CONFIG_PATH.new"
   mv -f "$CONFIG_PATH.new" "$CONFIG_PATH"
+fi
+if [ "$WRITE_CONFIG" -eq 1 ]; then
   install -m 600 "$STAGE/credentials.env" "$CREDENTIALS_PATH.new"
   mv -f "$CREDENTIALS_PATH.new" "$CREDENTIALS_PATH"
 fi
