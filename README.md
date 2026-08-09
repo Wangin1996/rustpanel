@@ -59,6 +59,6 @@ release `v1.1.3` is verified with all three of these checks before activation:
 Both binaries target Linux x86_64. Production deployments should expose the
 panel through an HTTPS reverse proxy.
 
-IP locations are resolved through the iLatency JSON API. Dashboard requests
+IP locations are resolved through the ip.2kaixin.com JSON API. Dashboard requests
 return cached data immediately while missing or expired locations are refreshed
 in the background, so a slow lookup does not hold up the table response.
