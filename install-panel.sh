@@ -11,7 +11,7 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-0.0.0.0:8080}"
-INSTALLER_REVISION=20260806.4
+INSTALLER_REVISION=20260809.1
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -34,6 +34,14 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+DOWNLOAD_REVISION="$(date +%s)"
+download_artifact() {
+  local artifact="$1" destination="$2" separator="?"
+  [[ "$BASE" == *\?* ]] && separator="&"
+  curl -fsSL -H 'Cache-Control: no-cache' \
+    "${BASE%/}/$artifact${separator}rev=$DOWNLOAD_REVISION" -o "$destination"
+}
 
 random_hex() {
   if command -v openssl >/dev/null 2>&1; then
@@ -125,9 +133,9 @@ fi
 
 echo ">> rust-panel installer revision $INSTALLER_REVISION"
 echo ">> [1/4] downloading release artifacts ..."
-curl -fsSL "$BASE/rust-panel" -o "$STAGE/rust-panel"
-curl -fsSL "$BASE/web.tar.gz" -o "$STAGE/web.tar.gz"
-curl -fsSL "$BASE/rust-panel.service" -o "$STAGE/rust-panel.service"
+download_artifact rust-panel "$STAGE/rust-panel"
+download_artifact web.tar.gz "$STAGE/web.tar.gz"
+download_artifact rust-panel.service "$STAGE/rust-panel.service"
 chmod +x "$STAGE/rust-panel"
 mkdir -p "$STAGE/web"
 tar xzf "$STAGE/web.tar.gz" -C "$STAGE/web"
