@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-n
 ```
 
 Online Agents can be upgraded from the panel's machine management page. Agent
-release `v1.1.3` is verified with all three of these checks before activation:
+release `v1.1.4` is verified with all three of these checks before activation:
 
 - SHA-256 matches `xboard-node.sha256`.
 - The executable identifies itself as `xboard-node`.
