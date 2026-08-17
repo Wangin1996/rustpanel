@@ -10,8 +10,8 @@
 set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
-BIND="${1:-0.0.0.0:8080}"
-INSTALLER_REVISION=20260809.1
+BIND="${1:-}"
+INSTALLER_REVISION=20260817.1
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -49,6 +49,41 @@ random_hex() {
   else
     head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'
   fi
+}
+
+port_is_unused() {
+  local port="$1" listeners="" port_hex=""
+  if command -v ss >/dev/null 2>&1 && listeners="$(ss -H -ltn 2>/dev/null)"; then
+    if printf '%s\n' "$listeners" | awk -v suffix=":${port}" \
+      '$4 ~ suffix "$" { found=1 } END { exit found ? 0 : 1 }'; then
+      return 1
+    fi
+    return 0
+  fi
+
+  port_hex="$(printf '%04X' "$port")"
+  if awk -v suffix=":${port_hex}" \
+    '$2 ~ suffix "$" && $4 == "0A" { found=1 } END { exit found ? 0 : 1 }' \
+    /proc/net/tcp /proc/net/tcp6 2>/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
+random_unused_port() {
+  local attempts=0 random="" candidate=""
+  while [ "$attempts" -lt 128 ]; do
+    attempts=$((attempts + 1))
+    random="$(od -An -N4 -tu4 /dev/urandom | tr -d '[:space:]')"
+    case "$random" in *[!0-9]*|'') continue;; esac
+    candidate=$((20000 + random % 10000))
+    if port_is_unused "$candidate"; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  echo "unable to find an unused TCP port in 20000-29999" >&2
+  return 1
 }
 
 urlencode() {
@@ -161,6 +196,10 @@ PW=""
 if [ -f "$ENV_FILE" ]; then
   cp "$ENV_FILE" "$STAGE/panel.env"
 else
+  if [ -z "$BIND" ]; then
+    BIND="127.0.0.1:$(random_unused_port)"
+    echo ">> selected first-install bind $BIND"
+  fi
   SECRET="$(random_hex 32)"
   IDENTITY_KEY="$(random_hex 32)"
   # 112 random bits plus every required character class; safe in panel.env.
@@ -256,10 +295,18 @@ systemctl --no-pager -l status rust-panel | head -n 12 || true
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 ACTIVE_BIND="$(sed -n 's/^APP_BIND=//p' "$ENV_FILE" | tail -n 1)"
-ACTIVE_BIND="${ACTIVE_BIND:-$BIND}"
+ACTIVE_BIND="${ACTIVE_BIND:-${BIND:-127.0.0.1:8080}}"
 PORT="${ACTIVE_BIND##*:}"
 echo
-echo ">> done. Admin: http://${IP:-<server-ip>}:${PORT}/  User portal: http://${IP:-<server-ip>}:${PORT}/app"
+case "$ACTIVE_BIND" in
+  127.0.0.1:*|\[::1\]:*)
+    echo ">> done. Local Admin: http://${ACTIVE_BIND}/  User portal: http://${ACTIVE_BIND}/app"
+    echo ">> Reverse proxy upstream: http://${ACTIVE_BIND}"
+    ;;
+  *)
+    echo ">> done. Admin: http://${IP:-<server-ip>}:${PORT}/  User portal: http://${IP:-<server-ip>}:${PORT}/app"
+    ;;
+esac
 if [ "$NEW_ADMIN" = 1 ]; then
   echo ">> Initial admin: admin@example.com"
   echo ">> Initial password: $PW"

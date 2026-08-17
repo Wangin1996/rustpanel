@@ -12,6 +12,10 @@ Current releases: panel `v1.1.9`, Agent `v1.1.8`.
 curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-panel.sh | sudo bash
 ```
 
+On first install, the script selects an unused random TCP port in
+`20000-29999` and binds it to `127.0.0.1`. Re-running the installer preserves
+the existing `APP_BIND` value.
+
 To bind the panel to another address on first install:
 
 ```bash
