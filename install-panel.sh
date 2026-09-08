@@ -11,7 +11,7 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-}"
-INSTALLER_REVISION=20260817.1
+INSTALLER_REVISION=20260908.1
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
@@ -27,9 +27,24 @@ mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
 STAGE="$(mktemp -d /tmp/rust-panel-install.XXXXXX)"
 WAS_ACTIVE=0
 INSTALL_STARTED=0
+INSTALL_OK=0
+BACKUP_READY=0
+BACKUP_DIR=""
 cleanup() {
+  if [ "$INSTALL_STARTED" = 1 ] && [ "$INSTALL_OK" = 0 ] && [ "$BACKUP_READY" = 1 ]; then
+    echo ">> installation failed; restoring the previous release" >&2
+    systemctl stop rust-panel >/dev/null 2>&1 || true
+    rm -rf "$INSTALL_DIR/xboard-admin/dist" "$INSTALL_DIR/user-portal"
+    [ -d "$BACKUP_DIR/admin-dist" ] && cp -a "$BACKUP_DIR/admin-dist" "$INSTALL_DIR/xboard-admin/dist"
+    [ -d "$BACKUP_DIR/user-portal" ] && cp -a "$BACKUP_DIR/user-portal" "$INSTALL_DIR/user-portal"
+    [ -f "$BACKUP_DIR/rust-panel" ] && cp -a "$BACKUP_DIR/rust-panel" "$INSTALL_DIR/rust-panel"
+    [ -f "$BACKUP_DIR/rust-panel.service" ] && cp -a "$BACKUP_DIR/rust-panel.service" /etc/systemd/system/rust-panel.service
+    [ -f "$BACKUP_DIR/panel.env" ] && cp -a "$BACKUP_DIR/panel.env" "$ENV_FILE"
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    systemctl start rust-panel >/dev/null 2>&1 || true
+  fi
   rm -rf "$STAGE"
-  if [ "$WAS_ACTIVE" = 1 ] && [ "$INSTALL_STARTED" = 0 ]; then
+  if [ "$WAS_ACTIVE" = 1 ] && [ "$INSTALL_OK" = 0 ] && [ "$BACKUP_READY" = 0 ]; then
     systemctl start rust-panel >/dev/null 2>&1 || true
   fi
 }
@@ -267,6 +282,16 @@ rm -f /etc/systemd/system/rust-panel-geoip-update.service \
 echo ">> [2/4] installing binary and web assets ..."
 INSTALL_STARTED=1
 mkdir -p "$INSTALL_DIR/xboard-admin"
+BACKUP_DIR="$STAGE/previous"
+mkdir -p "$BACKUP_DIR"
+[ -d "$INSTALL_DIR/xboard-admin/dist" ] && cp -a "$INSTALL_DIR/xboard-admin/dist" "$BACKUP_DIR/admin-dist"
+[ -d "$INSTALL_DIR/user-portal" ] && cp -a "$INSTALL_DIR/user-portal" "$BACKUP_DIR/user-portal"
+[ -f "$INSTALL_DIR/rust-panel" ] && cp -a "$INSTALL_DIR/rust-panel" "$BACKUP_DIR/rust-panel"
+[ -f /etc/systemd/system/rust-panel.service ] && cp -a /etc/systemd/system/rust-panel.service "$BACKUP_DIR/rust-panel.service"
+[ -f "$ENV_FILE" ] && cp -a "$ENV_FILE" "$BACKUP_DIR/panel.env"
+if [ -f "$BACKUP_DIR/rust-panel" ] && [ -f "$BACKUP_DIR/panel.env" ]; then
+  BACKUP_READY=1
+fi
 rm -rf "$INSTALL_DIR/xboard-admin/dist" "$INSTALL_DIR/user-portal"
 mv "$STAGE/web/xboard-admin/dist" "$INSTALL_DIR/xboard-admin/dist"
 mv "$STAGE/web/user-portal" "$INSTALL_DIR/user-portal"
@@ -274,6 +299,11 @@ mv "$STAGE/rust-panel" "$INSTALL_DIR/rust-panel"
 chmod +x "$INSTALL_DIR/rust-panel"
 mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
 mv "$STAGE/panel.env" "$ENV_FILE"
+if ! getent passwd rust-panel >/dev/null 2>&1; then
+  useradd --system --home-dir /var/lib/rust-panel --shell /usr/sbin/nologin rust-panel
+fi
+install -d -o rust-panel -g rust-panel -m 700 /var/lib/rust-panel
+chown rust-panel:rust-panel "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 rm -rf "$INSTALL_DIR/ip2region"
 rm -f "$INSTALL_DIR/ip2region_v4.xdb" "$INSTALL_DIR/ip2region_v6.xdb"
@@ -291,6 +321,7 @@ if ! systemctl is-active --quiet rust-panel; then
   journalctl -u rust-panel -n 50 --no-pager || true
   exit 1
 fi
+INSTALL_OK=1
 systemctl --no-pager -l status rust-panel | head -n 12 || true
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"

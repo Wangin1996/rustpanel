@@ -4,7 +4,21 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.9`, Agent `v1.1.8`.
+Current releases: panel `v1.1.10`, Agent `v1.1.9`.
+
+## Security maintenance release (2026-09-08)
+
+This release fixes user revocation synchronization, Agent report authorization,
+administrator availability, concurrent traffic updates, recurring traffic
+resets, batch user creation, and isolation between Agent instances sharing a
+node ID. Password work is bounded and offloaded from asynchronous workers;
+credential and permission changes invalidate old sessions.
+
+The panel now runs as a dedicated unprivileged service account and rejects
+unsafe production credentials. The installer restores the previous deployment
+files if activation fails. Back up MySQL before upgrading: the embedded schema
+migration adds session and traffic-reset columns, and file rollback does not
+roll back database migrations.
 
 ## Install or update the panel
 
@@ -42,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-n
 ```
 
 Online Agents can be upgraded from the panel's machine management page. Agent
-release `v1.1.8` is verified with all three of these checks before activation:
+release `v1.1.9` is verified with all three of these checks before activation:
 
 - SHA-256 matches `xboard-node.sha256`.
 - The executable identifies itself as `xboard-node`.
@@ -61,9 +75,14 @@ release `v1.1.8` is verified with all three of these checks before activation:
 | `install-node.sh` | Agent installer |
 | `rust-panel.service` | Panel systemd unit |
 | `xboard-node.service` | Agent systemd unit |
+| `nginx-panel.conf` | Optional reverse-proxy example with subscription-token log redaction |
 
 Both binaries target Linux x86_64. Production deployments should expose the
 panel through an HTTPS reverse proxy.
+
+The Nginx example is not installed automatically. Adapt its domain, certificate
+paths and upstream port before using it; existing proxy configurations are not
+changed by the panel installer.
 
 IP locations are resolved through the ip.2kaixin.com JSON API. Dashboard requests
 return cached data immediately while missing or expired locations are refreshed
