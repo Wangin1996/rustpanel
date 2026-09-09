@@ -11,10 +11,11 @@ set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
 BIND="${1:-}"
-INSTALLER_REVISION=20260908.1
+INSTALLER_REVISION=20260909.1
 INSTALL_DIR=/opt/rust-panel
 CONFIG_DIR=/etc/rust-panel
 ENV_FILE="$CONFIG_DIR/panel.env"
+AUX_FILES="/usr/local/libexec/rust-panel-update:panel-update-helper /usr/local/libexec/rust-panel-release-verify:release-verifier /etc/systemd/system/rust-panel-update.service:update-service /etc/systemd/system/rust-panel-update.path:update-path /opt/rust-panel/.release-version:release-version /opt/rust-panel/release.json:release-manifest /etc/rust-panel/update-base:update-base"
 
 [ "$(id -u)" = "0" ] || { echo "please run as root (sudo)"; exit 1; }
 ARCH="$(uname -m)"
@@ -40,8 +41,16 @@ cleanup() {
     [ -f "$BACKUP_DIR/rust-panel" ] && cp -a "$BACKUP_DIR/rust-panel" "$INSTALL_DIR/rust-panel"
     [ -f "$BACKUP_DIR/rust-panel.service" ] && cp -a "$BACKUP_DIR/rust-panel.service" /etc/systemd/system/rust-panel.service
     [ -f "$BACKUP_DIR/panel.env" ] && cp -a "$BACKUP_DIR/panel.env" "$ENV_FILE"
+    for pair in $AUX_FILES; do
+      target="${pair%%:*}"; name="${pair#*:}"
+      if [ -f "$BACKUP_DIR/$name" ]; then
+        cp -a "$BACKUP_DIR/$name" "$target"
+      else
+        rm -f -- "$target"
+      fi
+    done
     systemctl daemon-reload >/dev/null 2>&1 || true
-    systemctl start rust-panel >/dev/null 2>&1 || true
+    if [ "$WAS_ACTIVE" = 1 ]; then systemctl start rust-panel >/dev/null 2>&1 || true; fi
   fi
   rm -rf "$STAGE"
   if [ "$WAS_ACTIVE" = 1 ] && [ "$INSTALL_OK" = 0 ] && [ "$BACKUP_READY" = 0 ]; then
@@ -50,12 +59,41 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DOWNLOAD_REVISION="$(date +%s)"
+prepare_release() {
+  command -v python3 >/dev/null || { echo "python3 is required for release verification" >&2; exit 1; }
+  command -v sha256sum >/dev/null || { echo "sha256sum is required" >&2; exit 1; }
+  python3 - "$BASE" <<'PY'
+import sys, urllib.parse
+value = urllib.parse.urlsplit(sys.argv[1])
+if value.scheme != 'https' or not value.hostname or value.username or value.password or value.query or value.fragment:
+    raise SystemExit('release base must use HTTPS without credentials or query parameters')
+PY
+  curl --proto '=https' --tlsv1.2 -fsS --max-time 30 --max-filesize 65536 "${BASE%/}/release.json" -o "$STAGE/release.json"
+  EXPECTED_VERIFIER="$(python3 - "$STAGE/release.json" "${RP_EXPECTED_MANIFEST_SHA256:-}" <<'PY'
+import hashlib, json, re, sys
+raw = open(sys.argv[1], 'rb').read(65537)
+if len(raw) > 65536:
+    raise SystemExit('release manifest too large')
+if sys.argv[2] and hashlib.sha256(raw).hexdigest() != sys.argv[2]:
+    raise SystemExit('release changed after confirmation')
+item = json.loads(raw)['files']['release-verify.py']
+if not re.fullmatch('[0-9a-f]{64}', item['sha256']) or not 0 < item['size'] <= 1048576:
+    raise SystemExit('invalid verifier metadata')
+print(item['sha256'])
+PY
+)"
+  curl --proto '=https' --tlsv1.2 -fsS --max-time 30 --max-filesize 1048576 "${BASE%/}/release-verify.py" -o "$STAGE/release-verify.py"
+  ACTUAL_VERIFIER="$(sha256sum "$STAGE/release-verify.py" | awk '{print $1}')"
+  [ "$ACTUAL_VERIFIER" = "$EXPECTED_VERIFIER" ] || { echo "verifier SHA-256 mismatch" >&2; exit 1; }
+  RELEASE_VERSION="$(python3 "$STAGE/release-verify.py" manifest "$STAGE" --expected-digest "${RP_EXPECTED_MANIFEST_SHA256:-}")"
+}
+
+verify_release_file() {
+  python3 "$STAGE/release-verify.py" file "$STAGE" "$1" --expected-digest "${RP_EXPECTED_MANIFEST_SHA256:-}"
+}
+
 download_artifact() {
-  local artifact="$1" destination="$2" separator="?"
-  [[ "$BASE" == *\?* ]] && separator="&"
-  curl -fsSL -H 'Cache-Control: no-cache' \
-    "${BASE%/}/$artifact${separator}rev=$DOWNLOAD_REVISION" -o "$destination"
+  python3 "$STAGE/release-verify.py" download "$STAGE" "$1" --base "$BASE" --expected-digest "${RP_EXPECTED_MANIFEST_SHA256:-}"
 }
 
 random_hex() {
@@ -182,13 +220,14 @@ if [[ "$OLD_DATABASE_URL" == sqlite:* ]]; then
 fi
 
 echo ">> rust-panel installer revision $INSTALLER_REVISION"
-echo ">> [1/4] downloading release artifacts ..."
-download_artifact rust-panel "$STAGE/rust-panel"
-download_artifact web.tar.gz "$STAGE/web.tar.gz"
-download_artifact rust-panel.service "$STAGE/rust-panel.service"
-chmod +x "$STAGE/rust-panel"
-mkdir -p "$STAGE/web"
-tar xzf "$STAGE/web.tar.gz" -C "$STAGE/web"
+echo ">> [1/4] downloading and verifying release artifacts ..."
+prepare_release
+for artifact in rust-panel web.tar.gz rust-panel.service panel-update-helper.sh rust-panel-update.service rust-panel-update.path; do
+  download_artifact "$artifact"
+done
+chmod 755 "$STAGE/rust-panel"
+[ "$("$STAGE/rust-panel" --version)" = "rust-panel $RELEASE_VERSION" ] || { echo "panel binary version mismatch" >&2; exit 1; }
+python3 "$STAGE/release-verify.py" extract-web "$STAGE" --expected-digest "${RP_EXPECTED_MANIFEST_SHA256:-}"
 [ -f "$STAGE/web/xboard-admin/dist/index.html" ] || { echo "invalid web package: admin index missing"; exit 1; }
 [ -f "$STAGE/web/user-portal/index.html" ] || { echo "invalid web package: portal index missing"; exit 1; }
 [ -f "$STAGE/web/user-portal/portal.css" ] || { echo "invalid web package: portal stylesheet missing"; exit 1; }
@@ -289,6 +328,10 @@ mkdir -p "$BACKUP_DIR"
 [ -f "$INSTALL_DIR/rust-panel" ] && cp -a "$INSTALL_DIR/rust-panel" "$BACKUP_DIR/rust-panel"
 [ -f /etc/systemd/system/rust-panel.service ] && cp -a /etc/systemd/system/rust-panel.service "$BACKUP_DIR/rust-panel.service"
 [ -f "$ENV_FILE" ] && cp -a "$ENV_FILE" "$BACKUP_DIR/panel.env"
+for pair in $AUX_FILES; do
+  target="${pair%%:*}"; name="${pair#*:}"
+  if [ -f "$target" ]; then cp -a "$target" "$BACKUP_DIR/$name"; fi
+done
 if [ -f "$BACKUP_DIR/rust-panel" ] && [ -f "$BACKUP_DIR/panel.env" ]; then
   BACKUP_READY=1
 fi
@@ -303,6 +346,15 @@ if ! getent passwd rust-panel >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/rust-panel --shell /usr/sbin/nologin rust-panel
 fi
 install -d -o rust-panel -g rust-panel -m 700 /var/lib/rust-panel
+install -d -o root -g root -m 755 /usr/local/libexec /var/lib/rust-panel-updater
+install -o root -g root -m 755 "$STAGE/panel-update-helper.sh" /usr/local/libexec/rust-panel-update.new
+mv -f /usr/local/libexec/rust-panel-update.new /usr/local/libexec/rust-panel-update
+install -o root -g root -m 644 "$STAGE/release-verify.py" /usr/local/libexec/rust-panel-release-verify.new
+mv -f /usr/local/libexec/rust-panel-release-verify.new /usr/local/libexec/rust-panel-release-verify
+install -o root -g root -m 644 "$STAGE/rust-panel-update.service" /etc/systemd/system/rust-panel-update.service
+install -o root -g root -m 644 "$STAGE/rust-panel-update.path" /etc/systemd/system/rust-panel-update.path
+printf '%s\n' "$BASE" > "$STAGE/update-base"
+install -o root -g root -m 644 "$STAGE/update-base" "$CONFIG_DIR/update-base"
 chown rust-panel:rust-panel "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 rm -rf "$INSTALL_DIR/ip2region"
@@ -314,13 +366,36 @@ systemctl enable rust-panel >/dev/null 2>&1 || true
 
 echo ">> [4/4] starting ..."
 systemctl restart rust-panel
-sleep 2
-if ! systemctl is-active --quiet rust-panel; then
+HEALTH_BIND="$(sed -n 's/^APP_BIND=//p' "$ENV_FILE" | tail -n 1)"
+HEALTH_BIND="${HEALTH_BIND:-127.0.0.1:8080}"
+case "$HEALTH_BIND" in
+  0.0.0.0:*) HEALTH_BIND="127.0.0.1:${HEALTH_BIND##*:}" ;;
+  \[::\]:*) HEALTH_BIND="[::1]:${HEALTH_BIND##*:}" ;;
+esac
+stable=0
+previous_pid=""
+for attempt in {1..90}; do
+  current_pid="$(systemctl show rust-panel -p MainPID --value)"
+  if [ "$current_pid" != "$previous_pid" ]; then stable=0; fi
+  previous_pid="$current_pid"
+  if systemctl is-active --quiet rust-panel && [ "$(curl --noproxy '*' --connect-timeout 1 --max-time 2 -fsS "http://$HEALTH_BIND/healthz" 2>/dev/null || true)" = "rust-panel $RELEASE_VERSION" ]; then
+    stable=$((stable + 1))
+    [ "$stable" -ge 10 ] && break
+  else
+    stable=0
+  fi
+  sleep 1
+done
+if [ "$stable" -lt 10 ]; then
   echo "rust-panel failed to start" >&2
   systemctl --no-pager -l status rust-panel || true
   journalctl -u rust-panel -n 50 --no-pager || true
   exit 1
 fi
+printf '%s\n' "$RELEASE_VERSION" > "$STAGE/release-version"
+install -o root -g root -m 644 "$STAGE/release-version" "$INSTALL_DIR/.release-version"
+install -o root -g root -m 644 "$STAGE/release.json" "$INSTALL_DIR/release.json"
+systemctl enable --now rust-panel-update.path >/dev/null 2>&1
 INSTALL_OK=1
 systemctl --no-pager -l status rust-panel | head -n 12 || true
 

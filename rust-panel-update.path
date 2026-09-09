@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for administrator-confirmed rust-panel updates
+
+[Path]
+PathExists=/var/lib/rust-panel/panel-update.request
+Unit=rust-panel-update.service
+
+[Install]
+WantedBy=multi-user.target

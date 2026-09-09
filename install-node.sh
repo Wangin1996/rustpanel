@@ -42,7 +42,7 @@ case "$URL" in http://*|https://*) ;; *) die "panel URL must use HTTP or HTTPS" 
 [[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\\'* ]] || die "panel URL contains unsafe characters"
 [[ "$TOKEN" =~ ^[A-Za-z0-9._~-]+$ ]] || die "token contains unsafe characters"
 [ "$(uname -m)" = "x86_64" ] || die "only Linux x86_64 is supported"
-for command_name in curl systemctl sha256sum awk install; do
+for command_name in curl systemctl sha256sum awk install python3; do
   command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required"
 done
 
@@ -104,15 +104,43 @@ trap on_error ERR
 trap cleanup_stage EXIT
 
 echo ">> [1/4] downloading and verifying xboard-node from $BASE"
-curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$BASE/xboard-node" -o "$STAGE/xboard-node"
-curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$BASE/xboard-node.sha256" -o "$STAGE/xboard-node.sha256"
-curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$BASE/xboard-node.version" -o "$STAGE/xboard-node.version"
+prepare_release() {
+  python3 - "$BASE" <<'PY'
+import sys, urllib.parse
+value = urllib.parse.urlsplit(sys.argv[1])
+if value.scheme != 'https' or not value.hostname or value.username or value.password or value.query or value.fragment:
+    raise SystemExit('release base must use HTTPS without credentials or query parameters')
+PY
+  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 65536 "$BASE/release.json" -o "$STAGE/release.json"
+  EXPECTED_VERIFIER="$(python3 - "$STAGE/release.json" <<'PY'
+import hashlib, json, re, sys
+raw = open(sys.argv[1], 'rb').read(65537)
+if len(raw) > 65536:
+    raise SystemExit('release manifest too large')
+item = json.loads(raw)['files']['release-verify.py']
+if not re.fullmatch('[0-9a-f]{64}', item['sha256']) or not 0 < item['size'] <= 1048576:
+    raise SystemExit('invalid verifier metadata')
+print(item['sha256'])
+PY
+)"
+  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 1048576 "$BASE/release-verify.py" -o "$STAGE/release-verify.py"
+  [ "$(sha256sum "$STAGE/release-verify.py" | awk '{print $1}')" = "$EXPECTED_VERIFIER" ] || die "release verifier SHA-256 mismatch"
+  python3 "$STAGE/release-verify.py" manifest "$STAGE" >/dev/null
+}
+prepare_release
+download_artifact() {
+  python3 "$STAGE/release-verify.py" download "$STAGE" "$1" --base "$BASE"
+}
+for artifact in xboard-node xboard-node.sha256 xboard-node.version xboard-node.service; do
+  download_artifact "$artifact"
+done
 EXPECTED_SHA="$(awk 'NR == 1 { print tolower($1) }' "$STAGE/xboard-node.sha256")"
 ACTUAL_SHA="$(sha256sum "$STAGE/xboard-node" | awk '{ print tolower($1) }')"
 [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{64}$ ]] || die "invalid SHA-256 manifest"
 [ "$ACTUAL_SHA" = "$EXPECTED_SHA" ] || die "xboard-node SHA-256 mismatch"
 chmod 755 "$STAGE/xboard-node"
 EXPECTED_VERSION="$(tr -d '\r\n' < "$STAGE/xboard-node.version")"
+[ "$EXPECTED_VERSION" = "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["agent_version"])' "$STAGE/release.json")" ] || die "Agent manifest version mismatch"
 if [[ ! "$EXPECTED_VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)([-+][0-9A-Za-z.-]+)?$ ]] || [[ "${EXPECTED_VERSION,,}" == *dirty* ]]; then
   die "invalid release version: $EXPECTED_VERSION"
 fi
@@ -162,25 +190,7 @@ else
   echo ">> preserving existing $CONFIG_PATH (use --reconfigure to replace it)"
 fi
 
-cat > "$STAGE/xboard-node.service" <<'EOF'
-[Unit]
-Description=xboard-node (proxy node agent)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/xboard-node
-EnvironmentFile=-/etc/xboard-node/credentials.env
-ExecStart=/opt/xboard-node/xboard-node -c /etc/xboard-node/config.yml
-Restart=always
-RestartSec=2
-NoNewPrivileges=true
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
-
-[Install]
-WantedBy=multi-user.target
-EOF
+python3 "$STAGE/release-verify.py" file "$STAGE" xboard-node.service >/dev/null
 
 for pair in "$BINARY_PATH:xboard-node" "$CONFIG_PATH:config.yml" "$CREDENTIALS_PATH:credentials.env" "$SERVICE_PATH:xboard-node.service"; do
   target="${pair%%:*}"

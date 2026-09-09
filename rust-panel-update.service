@@ -1,0 +1,17 @@
+[Unit]
+Description=rust-panel fixed-function update helper
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/rust-panel-update
+User=root
+Group=root
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
+TimeoutStartSec=650
