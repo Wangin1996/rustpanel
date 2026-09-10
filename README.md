@@ -4,7 +4,7 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.13`, Agent `v1.1.11`.
+Current releases: panel `v1.1.14`, Agent `v1.1.12`.
 
 ## Security maintenance release (2026-09-08)
 

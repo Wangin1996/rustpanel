@@ -139,6 +139,75 @@ random_unused_port() {
   return 1
 }
 
+validate_database_url() {
+  python3 - "$1" <<'PY'
+import sys
+import urllib.parse
+
+raw = sys.argv[1]
+if not raw or len(raw) > 2048:
+    raise SystemExit("DATABASE_URL is empty or too long")
+if any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7f for ch in raw):
+    raise SystemExit("DATABASE_URL contains whitespace or control characters")
+if any(ch in raw for ch in "'\"\\;|`<>"):
+    raise SystemExit("DATABASE_URL contains unsafe delimiter characters")
+try:
+    value = urllib.parse.urlsplit(raw)
+    hostname = value.hostname
+    port = value.port
+except ValueError as exc:
+    raise SystemExit(f"invalid DATABASE_URL: {exc}")
+if value.scheme.lower() != "mysql" or not hostname or not value.path.strip("/"):
+    raise SystemExit("DATABASE_URL must be a mysql:// URL with a host and database")
+if "/" in value.path.strip("/"):
+    raise SystemExit("DATABASE_URL database path must contain one segment")
+if value.fragment:
+    raise SystemExit("DATABASE_URL must not contain a fragment")
+if port is not None and not 1 <= port <= 65535:
+    raise SystemExit("DATABASE_URL port is outside 1-65535")
+PY
+}
+
+validate_bind() {
+  python3 - "$1" <<'PY'
+import ipaddress
+import re
+import sys
+
+raw = sys.argv[1]
+if not raw or len(raw) > 255 or any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7f for ch in raw):
+    raise SystemExit("APP_BIND is empty, too long, or contains whitespace/control characters")
+if any(ch in raw for ch in "'\"\\;|`<>"):
+    raise SystemExit("APP_BIND contains unsafe delimiter characters")
+
+if raw.startswith("["):
+    close = raw.find("]:")
+    if close <= 1:
+        raise SystemExit("APP_BIND has an invalid IPv6 host")
+    host, port_text = raw[1:close], raw[close + 2:]
+    try:
+        if ipaddress.ip_address(host).version != 6:
+            raise ValueError
+    except ValueError:
+        raise SystemExit("APP_BIND bracketed host must be a valid IPv6 address")
+else:
+    if raw.count(":") != 1:
+        raise SystemExit("APP_BIND must use host:port or [ipv6]:port")
+    host, port_text = raw.rsplit(":", 1)
+    if not host or ":" in host:
+        raise SystemExit("APP_BIND has an invalid host")
+    if host != "*":
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?", host):
+                raise SystemExit("APP_BIND has an invalid host")
+
+if not port_text.isdigit() or not 0 <= int(port_text) <= 65535:
+    raise SystemExit("APP_BIND port is outside 0-65535")
+PY
+}
+
 urlencode() {
   local LC_ALL=C value="$1" out="" char hex index
   for ((index = 0; index < ${#value}; index++)); do
@@ -194,6 +263,8 @@ set_env_value() {
   env_path="${1:?missing environment file path}"
   key="${2:?missing environment key}"
   value="${3-}"
+  [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] || { echo "invalid environment key: $key" >&2; exit 1; }
+  [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || { echo "environment value contains a newline: $key" >&2; exit 1; }
   output="${env_path}.tmp"
   found=0
   line=""
@@ -243,7 +314,7 @@ else
   echo ">> MySQL connection (the database and user must already exist)"
   mysql_url_from_input
 fi
-[[ "$MYSQL_URL" == mysql://* ]] || { echo "DATABASE_URL must start with mysql://" >&2; exit 1; }
+validate_database_url "$MYSQL_URL" || { echo "invalid DATABASE_URL" >&2; exit 1; }
 
 NEW_ADMIN=0
 PW=""
@@ -254,6 +325,7 @@ else
     BIND="127.0.0.1:$(random_unused_port)"
     echo ">> selected first-install bind $BIND"
   fi
+  validate_bind "$BIND" || { echo "invalid APP_BIND" >&2; exit 1; }
   SECRET="$(random_hex 32)"
   IDENTITY_KEY="$(random_hex 32)"
   # 112 random bits plus every required character class; safe in panel.env.
@@ -290,6 +362,10 @@ USER_PORTAL_DIR=/opt/rust-panel/user-portal
 RUST_LOG=info,rust_panel=info
 EOF
   NEW_ADMIN=1
+fi
+ACTIVE_BIND_CONFIG="$(sed -n 's/^APP_BIND=//p' "$STAGE/panel.env" | tail -n 1)"
+if [ -n "$ACTIVE_BIND_CONFIG" ]; then
+  validate_bind "$ACTIVE_BIND_CONFIG" || { echo "invalid APP_BIND in panel.env" >&2; exit 1; }
 fi
 set_env_value "$STAGE/panel.env" DATABASE_URL "$MYSQL_URL"
 if ! grep -q '^DB_MAX_CONNECTIONS=' "$STAGE/panel.env"; then

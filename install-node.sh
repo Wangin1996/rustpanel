@@ -38,11 +38,11 @@ fi
 [ -n "$NODE_ID" ] || [ -n "$MACHINE_ID" ] || die "--node-id or --machine-id is required"
 [[ "${NODE_ID:-${MACHINE_ID}}" =~ ^[1-9][0-9]*$ ]] || die "node or machine id must be positive"
 case "$BASE" in https://*) ;; *) die "download base must use HTTPS" ;; esac
-case "$URL" in http://*|https://*) ;; *) die "panel URL must use HTTP or HTTPS" ;; esac
+case "$URL" in https://*) ;; http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://\[::1\]:*|http://\[::1\]) ;; *) die "panel URL must use HTTPS (HTTP is allowed only for localhost development)" ;; esac
 [[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\\'* ]] || die "panel URL contains unsafe characters"
 [[ "$TOKEN" =~ ^[A-Za-z0-9._~-]+$ ]] || die "token contains unsafe characters"
 [ "$(uname -m)" = "x86_64" ] || die "only Linux x86_64 is supported"
-for command_name in curl systemctl sha256sum awk install python3; do
+for command_name in curl systemctl sha256sum awk install python3 getent groupadd useradd chown; do
   command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required"
 done
 
@@ -53,7 +53,14 @@ CONFIG_PATH="$CONFIG_DIR/config.yml"
 CREDENTIALS_PATH="$CONFIG_DIR/credentials.env"
 SERVICE_PATH="/etc/systemd/system/xboard-node.service"
 
+if ! getent group xboard-node >/dev/null 2>&1; then
+  groupadd --system xboard-node
+fi
+if ! id xboard-node >/dev/null 2>&1; then
+  useradd --system --gid xboard-node --home-dir "$INSTALL_DIR" --shell /usr/sbin/nologin xboard-node
+fi
 mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+chown xboard-node:xboard-node "$INSTALL_DIR" "$CONFIG_DIR"
 chmod 700 "$CONFIG_DIR"
 STAGE="$(mktemp -d "$INSTALL_DIR/.install.XXXXXX")"
 BACKUP="$STAGE/backup"
@@ -83,6 +90,7 @@ rollback_install() {
       rm -f -- "$target"
     fi
   done
+  chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH" "$CREDENTIALS_PATH" 2>/dev/null || true
   systemctl daemon-reload >/dev/null 2>&1 || true
   if [ "$WAS_ENABLED" -eq 1 ]; then
     systemctl enable xboard-node >/dev/null 2>&1 || true
@@ -214,6 +222,7 @@ if [ "$WRITE_CONFIG" -eq 1 ]; then
 fi
 install -m 644 "$STAGE/xboard-node.service" "$SERVICE_PATH.new"
 mv -f "$SERVICE_PATH.new" "$SERVICE_PATH"
+chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH" "$CREDENTIALS_PATH"
 
 echo ">> [3/4] starting systemd service"
 systemctl daemon-reload
