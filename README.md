@@ -4,7 +4,12 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.13` (rollback from commit `6769d34`), Agent `v1.1.15`.
+Current releases: panel `v1.1.16`, Agent `v1.1.15`.
+
+Panel `v1.1.16` restores proxy access for administrator accounts that also
+hold a subscription plan. Administrator privileges no longer remove those
+users from Agent authentication, traffic accounting, expiration, or reset
+processing; subscription state remains independent from panel login access.
 
 ## Security maintenance release (2026-09-08)
 
