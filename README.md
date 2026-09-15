@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.16`, Agent `v1.1.15`.
+Current releases: panel `v1.1.17`, Agent `v1.1.15`.
+
+Panel `v1.1.17` adds shared PEM certificate management, node references,
+atomic batch binding, and automatic configuration synchronization after
+certificate replacement. It supports AnyTLS, Hysteria2, TUIC, Trojan,
+and ordinary TLS configurations for VLESS, VMess, SOCKS and HTTP.
+Certificate validity, key matching and node SNI coverage are checked before
+saving. Existing independent node certificates remain available. The embedded
+database migration adds the certificates table and node certificate references.
 
 Panel `v1.1.16` restores proxy access for administrator accounts that also
 hold a subscription plan. Administrator privileges no longer remove those
