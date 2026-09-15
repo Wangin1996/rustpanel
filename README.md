@@ -4,7 +4,12 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.17`, Agent `v1.1.15`.
+Current releases: panel `v1.1.18`, Agent `v1.1.15`.
+
+Panel `v1.1.18` fixes long certificate labels overflowing the batch binding
+dialog, including on mobile screens. Certificate cards now group domain labels,
+validity dates, expiry status, and collapsible node references, with actions in
+a dedicated footer. This release introduces no additional database migrations.
 
 Panel `v1.1.17` adds shared PEM certificate management, node references,
 atomic batch binding, and automatic configuration synchronization after
