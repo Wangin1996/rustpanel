@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.19`, Agent `v1.1.15`.
+Current releases: panel `v1.1.20`, Agent `v1.1.15`.
+
+Panel `v1.1.20` adds single and bulk unban actions to risk ban history.
+Administrators can select active records on the current page and release their
+IP bans immediately. Releases update both persisted and live enforcement state,
+preserve history, and refresh the overview. Pending writes cannot restore a
+released ban, and stale history selections cannot release a newer ban for the
+same IP. No new database migrations are included.
 
 Panel `v1.1.19` refreshes the version update area and shared certificate cards
 using the panel's existing theme, with responsive layouts and dark mode support.
