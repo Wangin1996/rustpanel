@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.22`, Agent `v1.1.16`.
+Current releases: panel `v1.1.23`, Agent `v1.1.17`.
+
+Panel `v1.1.23` and Agent `v1.1.17` fix update commands missing the target
+version, recover queued updates after reconnect, and expire unacknowledged
+or stalled jobs so they can be retried. Agent validation failures report a
+failed status. Machine management now shows release status, confirms target
+versions, prevents duplicate updates, and supports bounded bulk updates.
+Update both panel and Agent. No new database migrations are included.
 
 Panel `v1.1.22` and Agent `v1.1.16` complete advanced configuration for the
 ten managed protocols using a schema generated from the bundled Mihomo core.
