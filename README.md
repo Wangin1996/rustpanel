@@ -4,7 +4,13 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.20`, Agent `v1.1.15`.
+Current releases: panel `v1.1.21`, Agent `v1.1.15`.
+
+Panel `v1.1.21` improves risk history layouts with compact score and result
+columns and more room for request details. Phones and tablets display labeled
+record cards with directly accessible selection and unban actions. Filters,
+pagination, long request paths and IPv6 addresses adapt to narrow screens.
+No new database migrations are included.
 
 Panel `v1.1.20` adds single and bulk unban actions to risk ban history.
 Administrators can select active records on the current page and release their
