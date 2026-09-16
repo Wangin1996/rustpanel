@@ -4,9 +4,9 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.23`, Agent `v1.1.17`.
+Current releases: panel `v1.1.24`, Agent `v1.1.18`.
 
-Panel `v1.1.23` and Agent `v1.1.17` fix update commands missing the target
+Panel `v1.1.24` and Agent `v1.1.18` fix update commands missing the target
 version, recover queued updates after reconnect, and expire unacknowledged
 or stalled jobs so they can be retried. Agent validation failures report a
 failed status. Machine management now shows release status, confirms target
@@ -47,7 +47,7 @@ dialog, including on mobile screens. Certificate cards now group domain labels,
 validity dates, expiry status, and collapsible node references, with actions in
 a dedicated footer. This release introduces no additional database migrations.
 
-Panel `v1.1.17` adds shared PEM certificate management, node references,
+Panel `v1.1.18` adds shared PEM certificate management, node references,
 atomic batch binding, and automatic configuration synchronization after
 certificate replacement. It supports AnyTLS, Hysteria2, TUIC, Trojan,
 and ordinary TLS configurations for VLESS, VMess, SOCKS and HTTP.
