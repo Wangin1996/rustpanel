@@ -4,7 +4,16 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.21`, Agent `v1.1.15`.
+Current releases: panel `v1.1.22`, Agent `v1.1.16`.
+
+Panel `v1.1.22` and Agent `v1.1.16` complete advanced configuration for the
+ten managed protocols using a schema generated from the bundled Mihomo core.
+This includes AnyTLS reuse, mTLS, ShadowTLS, Restls, JLS, VMess MKCP/Mekya/
+TLSMirror, Shadowsocks KcpTun, Hysteria2 Realm, and nested XHTTP download and
+reuse options. Nested fields are validated and supported client options are
+rendered in Mihomo subscriptions. Unsupported inbound Proxy Protocol is
+rejected. Update both the panel and Agent to use the new server options.
+No new database migrations are included.
 
 Panel `v1.1.21` improves risk history layouts with compact score and result
 columns and more room for request details. Phones and tablets display labeled
