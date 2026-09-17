@@ -31,7 +31,11 @@ INSTALL_STARTED=0
 INSTALL_OK=0
 BACKUP_READY=0
 BACKUP_DIR=""
+INSTALL_PHASE="preflight"
 cleanup() {
+  if [ "$INSTALL_OK" = 0 ] && [ -n "${RP_INSTALL_RESULT:-}" ]; then
+    printf '%s\n' "$INSTALL_PHASE" > "$RP_INSTALL_RESULT"
+  fi
   if [ "$INSTALL_STARTED" = 1 ] && [ "$INSTALL_OK" = 0 ] && [ "$BACKUP_READY" = 1 ]; then
     echo ">> installation failed; restoring the previous release" >&2
     systemctl stop rust-panel >/dev/null 2>&1 || true
@@ -293,11 +297,14 @@ fi
 echo ">> rust-panel installer revision $INSTALLER_REVISION"
 echo ">> [1/4] downloading and verifying release artifacts ..."
 prepare_release
+INSTALL_PHASE="download"
 for artifact in rust-panel web.tar.gz rust-panel.service panel-update-helper.sh rust-panel-update.service rust-panel-update.path; do
   download_artifact "$artifact"
 done
 chmod 755 "$STAGE/rust-panel"
+INSTALL_PHASE="binary-version"
 [ "$("$STAGE/rust-panel" --version)" = "rust-panel $RELEASE_VERSION" ] || { echo "panel binary version mismatch" >&2; exit 1; }
+INSTALL_PHASE="web-package"
 python3 "$STAGE/release-verify.py" extract-web "$STAGE" --expected-digest "${RP_EXPECTED_MANIFEST_SHA256:-}"
 [ -f "$STAGE/web/xboard-admin/dist/index.html" ] || { echo "invalid web package: admin index missing"; exit 1; }
 [ -f "$STAGE/web/user-portal/index.html" ] || { echo "invalid web package: portal index missing"; exit 1; }
@@ -306,6 +313,7 @@ python3 "$STAGE/release-verify.py" extract-web "$STAGE" --expected-digest "${RP_
 [ -f "$STAGE/web/user-portal/dashboard.js" ] || { echo "invalid web package: dashboard script missing"; exit 1; }
 [ -f "$STAGE/web/user-portal/dashboard.html" ] || { echo "invalid web package: dashboard markup missing"; exit 1; }
 
+INSTALL_PHASE="configuration"
 if [ -n "${RP_DATABASE_URL:-}" ]; then
   MYSQL_URL="$RP_DATABASE_URL"
 elif [[ "$OLD_DATABASE_URL" == mysql://* ]]; then
@@ -396,6 +404,7 @@ rm -f /etc/systemd/system/rust-panel-geoip-update.service \
 
 echo ">> [2/4] installing binary and web assets ..."
 INSTALL_STARTED=1
+INSTALL_PHASE="install"
 mkdir -p "$INSTALL_DIR/xboard-admin"
 BACKUP_DIR="$STAGE/previous"
 mkdir -p "$BACKUP_DIR"
@@ -441,6 +450,7 @@ systemctl daemon-reload
 systemctl enable rust-panel >/dev/null 2>&1 || true
 
 echo ">> [4/4] starting ..."
+INSTALL_PHASE="health-check"
 systemctl restart rust-panel
 HEALTH_BIND="$(sed -n 's/^APP_BIND=//p' "$ENV_FILE" | tail -n 1)"
 HEALTH_BIND="${HEALTH_BIND:-127.0.0.1:8080}"

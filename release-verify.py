@@ -129,6 +129,36 @@ def download(base, name, destination, limit):
             output.write(chunk)
 
 
+def installer_failure(code, phase):
+    stages = {"preflight": "发布清单校验", "download": "下载产物", "binary-version": "二进制版本校验", "web-package": "前端归档校验", "configuration": "安装配置检查", "install": "文件安装", "health-check": "服务启动检查"}
+    stage = stages.get(phase, "安装")
+    unchanged = phase in {"preflight", "download", "binary-version", "web-package", "configuration"}
+    return f"{stage}失败（退出码 {code}）；" + ("尚未替换程序文件。" if unchanged else "请确认服务及回滚结果。") + "日志：journalctl -u rust-panel-update.service -n 100 --no-pager"
+
+
+def recover_interrupted_update():
+    import fcntl
+    root = Path("/var/lib/rust-panel-updater")
+    if os.geteuid() != 0 or not root.exists():
+        return
+    with (root / "lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        target = root / "status.json"
+        if not target.exists():
+            return
+        value = json.loads(target.read_text())
+        if value.get("phase") not in ("queued", "downloading", "installing"):
+            return
+        value.update(phase="failed", updated_at=int(time.time()), message="更新服务意外退出。请检查当前版本和服务日志后重试；未确认回滚结果。")
+        temporary = root / "status.tmp"
+        temporary.write_text(json.dumps(value), encoding="utf-8")
+        temporary.chmod(0o644)
+        os.replace(temporary, target)
+
+
 def apply_request():
     import fcntl
 
@@ -178,6 +208,8 @@ def apply_request():
                 installer = artifact(stage, data, "install-panel.sh")
                 status("installing", "Installing verified files; panel will briefly restart")
                 environment = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "RP_BASE": base, "RP_EXPECTED_MANIFEST_SHA256": request["manifest_sha256"]}
+                result_path = stage / "installer-result"
+                environment["RP_INSTALL_RESULT"] = str(result_path)
                 process = subprocess.Popen(["bash", str(installer)], env=environment, start_new_session=True)
                 try:
                     result = process.wait(timeout=600)
@@ -190,7 +222,8 @@ def apply_request():
                         process.wait()
                     raise RuntimeError("installer timed out; inspect service and rollback logs")
                 if result:
-                    raise RuntimeError("installer failed; previous files were restored where available")
+                    phase = result_path.read_text()[:64].strip() if result_path.exists() else "unknown"
+                    raise RuntimeError(installer_failure(result, phase))
             status("succeeded", "Panel update completed and health check passed")
         except Exception as error:
             if request_path.exists() or request_path.is_symlink():
@@ -201,13 +234,15 @@ def apply_request():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["manifest", "file", "download", "extract-web", "apply-request"])
+    parser.add_argument("command", choices=["manifest", "file", "download", "extract-web", "apply-request", "recover-interrupted"])
     parser.add_argument("directory", nargs="?", default=".")
     parser.add_argument("name", nargs="?")
     parser.add_argument("--expected-digest", default="")
     parser.add_argument("--base", default=DEFAULT_BASE)
     arguments = parser.parse_args()
-    if arguments.command == "apply-request":
+    if arguments.command == "recover-interrupted":
+        recover_interrupted_update()
+    elif arguments.command == "apply-request":
         apply_request()
     else:
         release = manifest(arguments.directory, arguments.expected_digest)

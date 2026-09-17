@@ -4,7 +4,9 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.23`, Agent `v1.1.18`.
+Current releases: panel `v1.1.25`, Agent `v1.1.19`.
+
+Panel `v1.1.25` and Agent `v1.1.19` improve update recovery, enforce the requested Agent version, fix traffic reset SQL, separate authentication failures from scan scoring, add certificate pagination and configuration status, and explain protocol options. Release validation checks executable versions and web archives. support-bundle.py exports allowlisted diagnostics without credentials. No database migrations are added.
 
 Panel `v1.1.23` and Agent `v1.1.18` fix update commands missing the target
 version, recover queued updates after reconnect, and expire unacknowledged

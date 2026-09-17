@@ -8,6 +8,7 @@ StartLimitBurst=3
 [Service]
 Type=oneshot
 ExecStart=/usr/local/libexec/rust-panel-update
+ExecStopPost=/usr/bin/python3 /usr/local/libexec/rust-panel-release-verify recover-interrupted
 User=root
 Group=root
 UMask=0077
