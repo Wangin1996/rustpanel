@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.37`, Agent `v1.1.21`.
+Current releases: panel `v1.1.38`, Agent `v1.1.21`.
+
+Panel `v1.1.38` completes provider-name simplification for country naming
+formats. Gomami Nano/SG, V.ps Gen2 variants and DMIT LAX variants become
+GOMAMI, V.PS and DMIT plus country and stable duplicate numbers. Upstream
+flags and raw names remain intact. Provider simplification defaults on for
+existing naming rules, can be disabled per source, and respects fixed names.
+Resync sources or save their naming rules to update existing display names.
+The Agent is unchanged; no new migration is required.
 
 Panel `v1.1.37` replaces alphabetical region sorting with continuous domestic
 region preference across all node sources, including newly synchronized nodes.
