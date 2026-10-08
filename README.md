@@ -4,7 +4,16 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.34`, Agent `v1.1.21`.
+Current releases: panel `v1.1.35`, Agent `v1.1.21`.
+
+Panel `v1.1.35` adds third-party subscription sources with a configurable
+User-Agent (default `v2rayN/6.60`) and scheduled/manual synchronization. Nodes
+are grouped under their subscription, with manual nodes shown separately.
+Plain and Base64 link lists are supported. Failed or invalid
+subscriptions preserve existing nodes; successful syncs update only their own
+nodes and preserve sorting and disabled-node choices. Disabling a source also
+removes its nodes from user subscriptions. Migration 0022 runs automatically
+on panel startup. The Agent is unchanged.
 
 Panel `v1.1.25` and Agent `v1.1.19` improve update recovery, enforce the requested Agent version, fix traffic reset SQL, separate authentication failures from scan scoring, add certificate pagination and configuration status, and explain protocol options. Release validation checks executable versions and web archives. support-bundle.py exports allowlisted diagnostics without credentials. No database migrations are added.
 
