@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.36`, Agent `v1.1.21`.
+Current releases: panel `v1.1.37`, Agent `v1.1.21`.
+
+Panel `v1.1.37` replaces alphabetical region sorting with continuous domestic
+region preference across all node sources, including newly synchronized nodes.
+Automatic ordering is the default; the sort editor can switch immediately to
+the preserved manual order. Country naming formats remove pipe-separated
+provider suffixes and avoid repeating the country suffix while preserving
+upstream flags. Resync a source or save its naming rules to rename existing
+nodes. No new migration is needed. The Agent is unchanged.
 
 Panel `v1.1.36` adds per-source node naming rules with live previews, fixed
 names, literal/regex replacements and country suffixes. Original flags are
