@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.38`, Agent `v1.1.21`.
+Current releases: panel `v1.1.39`, Agent `v1.1.21`.
+
+Panel `v1.1.39` switches management IP location lookups to iLatency. User IP
+history, subscription access history and risk records use its country, region
+and city fields, filtering unknown location values. Migration 0024 expires
+previous management location caches automatically on startup so subsequent
+reads refresh them from iLatency. Subscription node-flag providers, the web
+assets and the Agent are unchanged.
 
 Panel `v1.1.38` completes provider-name simplification for country naming
 formats. Gomami Nano/SG, V.ps Gen2 variants and DMIT LAX variants become
