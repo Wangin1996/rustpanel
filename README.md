@@ -4,7 +4,7 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.40`, Agent `v1.1.22`.
+Current releases: panel `v1.1.41`, Agent `v1.1.23`.
 
 Panel `v1.1.39` switches management IP location lookups to iLatency. User IP
 history, subscription access history and risk records use its country, region
