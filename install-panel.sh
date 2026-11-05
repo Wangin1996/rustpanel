@@ -53,6 +53,10 @@ cleanup() {
         rm -f -- "$target"
       fi
     done
+    rm -f /usr/local/libexec/rust-panel-update.new /usr/local/libexec/rust-panel-release-verify.new
+    if [ ! -f "$BACKUP_DIR/update-path" ]; then
+      systemctl disable --now rust-panel-update.path >/dev/null 2>&1 || true
+    fi
     systemctl daemon-reload >/dev/null 2>&1 || true
     if [ "$WAS_ACTIVE" = 1 ]; then systemctl start rust-panel >/dev/null 2>&1 || true; fi
   fi

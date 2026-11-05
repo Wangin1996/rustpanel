@@ -90,7 +90,11 @@ rollback_install() {
       rm -f -- "$target"
     fi
   done
-  chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH" "$CREDENTIALS_PATH" 2>/dev/null || true
+  chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH"
+if [ -e "$CREDENTIALS_PATH" ]; then
+  chown xboard-node:xboard-node "$CREDENTIALS_PATH"
+  chmod 600 "$CREDENTIALS_PATH"
+fi 2>/dev/null || true
   systemctl daemon-reload >/dev/null 2>&1 || true
   if [ "$WAS_ENABLED" -eq 1 ]; then
     systemctl enable xboard-node >/dev/null 2>&1 || true
@@ -222,7 +226,11 @@ if [ "$WRITE_CONFIG" -eq 1 ]; then
 fi
 install -m 644 "$STAGE/xboard-node.service" "$SERVICE_PATH.new"
 mv -f "$SERVICE_PATH.new" "$SERVICE_PATH"
-chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH" "$CREDENTIALS_PATH"
+chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH"
+if [ -e "$CREDENTIALS_PATH" ]; then
+  chown xboard-node:xboard-node "$CREDENTIALS_PATH"
+  chmod 600 "$CREDENTIALS_PATH"
+fi
 
 echo ">> [3/4] starting systemd service"
 systemctl daemon-reload
