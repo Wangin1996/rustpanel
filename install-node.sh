@@ -59,12 +59,17 @@ fi
 if ! id xboard-node >/dev/null 2>&1; then
   useradd --system --gid xboard-node --home-dir "$INSTALL_DIR" --shell /usr/sbin/nologin xboard-node
 fi
-mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
-chown xboard-node:xboard-node "$INSTALL_DIR" "$CONFIG_DIR"
-chmod 700 "$CONFIG_DIR"
-STAGE="$(mktemp -d "$INSTALL_DIR/.install.XXXXXX")"
+
+STAGE_BASE="/run"
+if [ ! -d "$STAGE_BASE" ] || [ ! -w "$STAGE_BASE" ]; then
+  STAGE_BASE="/root"
+  mkdir -p -m 700 "$STAGE_BASE"
+fi
+STAGE="$(umask 077 && mktemp -d "$STAGE_BASE/xboard-node-stage.XXXXXX")"
+chown -h root:root "$STAGE"
+chmod 700 "$STAGE"
 BACKUP="$STAGE/backup"
-mkdir -p "$BACKUP"
+mkdir -p -m 700 "$BACKUP"
 BACKUP_READY=0
 WAS_ACTIVE=0
 WAS_ENABLED=0
@@ -73,28 +78,38 @@ cleanup_stage() {
   rm -rf -- "$STAGE"
 }
 
+safe_replace_file() {
+  local src="$1" dst="$2" mode="$3" owner="$4"
+  local parent tmp
+  parent="$(dirname "$dst")"
+  [ ! -L "$parent" ] || die "refusing to write into symlink directory: $parent"
+  [ ! -L "$dst" ] || die "refusing to overwrite symlink: $dst"
+  rm -f -- "$dst.new"
+  tmp="$(umask 077 && mktemp "$parent/.install-tmp.XXXXXX")"
+  install -m "$mode" "$src" "$tmp"
+  chown -h "$owner" "$tmp"
+  mv -fT "$tmp" "$dst"
+}
+
 rollback_install() {
   [ "$BACKUP_READY" -eq 1 ] || return 0
   echo ">> rolling back failed installation" >&2
   systemctl stop xboard-node >/dev/null 2>&1 || true
   for entry in xboard-node config.yml credentials.env xboard-node.service; do
     case "$entry" in
-      xboard-node) target="$BINARY_PATH"; mode=755 ;;
-      config.yml) target="$CONFIG_PATH"; mode=600 ;;
-      credentials.env) target="$CREDENTIALS_PATH"; mode=600 ;;
-      xboard-node.service) target="$SERVICE_PATH"; mode=644 ;;
+      xboard-node) target="$BINARY_PATH"; mode=755; owner="xboard-node:xboard-node" ;;
+      config.yml) target="$CONFIG_PATH"; mode=600; owner="xboard-node:xboard-node" ;;
+      credentials.env) target="$CREDENTIALS_PATH"; mode=600; owner="xboard-node:xboard-node" ;;
+      xboard-node.service) target="$SERVICE_PATH"; mode=644; owner="root:root" ;;
     esac
     if [ -f "$BACKUP/$entry" ]; then
-      install -m "$mode" "$BACKUP/$entry" "$target"
+      if [ ! -L "$target" ] && [ ! -L "$(dirname "$target")" ]; then
+        safe_replace_file "$BACKUP/$entry" "$target" "$mode" "$owner"
+      fi
     else
-      rm -f -- "$target"
+      [ -L "$target" ] || rm -f -- "$target"
     fi
   done
-  chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH"
-if [ -e "$CREDENTIALS_PATH" ]; then
-  chown xboard-node:xboard-node "$CREDENTIALS_PATH"
-  chmod 600 "$CREDENTIALS_PATH"
-fi 2>/dev/null || true
   systemctl daemon-reload >/dev/null 2>&1 || true
   if [ "$WAS_ENABLED" -eq 1 ]; then
     systemctl enable xboard-node >/dev/null 2>&1 || true
@@ -156,12 +171,25 @@ EXPECTED_VERSION="$(tr -d '\r\n' < "$STAGE/xboard-node.version")"
 if [[ ! "$EXPECTED_VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)([-+][0-9A-Za-z.-]+)?$ ]] || [[ "${EXPECTED_VERSION,,}" == *dirty* ]]; then
   die "invalid release version: $EXPECTED_VERSION"
 fi
-VERSION_OUTPUT="$("$STAGE/xboard-node" -v)"
+VERSION_OUTPUT="$(env -i PATH=/usr/bin:/bin LC_ALL=C "$STAGE/xboard-node" -v)"
 ACTUAL_VERSION="$(printf '%s\n' "$VERSION_OUTPUT" | awk '$1 == "xboard-node" { print $2; exit }')"
 [ "$ACTUAL_VERSION" = "$EXPECTED_VERSION" ] || die "binary version mismatch: got ${ACTUAL_VERSION:-invalid}, expected $EXPECTED_VERSION"
 
+systemctl is-active xboard-node >/dev/null 2>&1 && WAS_ACTIVE=1 || true
+systemctl is-enabled xboard-node >/dev/null 2>&1 && WAS_ENABLED=1 || true
+systemctl stop xboard-node >/dev/null 2>&1 || true
+
+[ ! -L "$INSTALL_DIR" ] || die "$INSTALL_DIR must not be a symlink"
+[ ! -L "$CONFIG_DIR" ] || die "$CONFIG_DIR must not be a symlink"
+mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+chown -h xboard-node:xboard-node "$INSTALL_DIR" "$CONFIG_DIR"
+chmod 750 "$INSTALL_DIR"
+chmod 700 "$CONFIG_DIR"
+
 WRITE_CONFIG=0
 if [ "$RECONFIGURE" -eq 1 ] || [ ! -f "$CONFIG_PATH" ]; then
+  [ ! -L "$CONFIG_PATH" ] || die "refusing to overwrite symlink: $CONFIG_PATH"
+  [ ! -L "$CREDENTIALS_PATH" ] || die "refusing to overwrite symlink: $CREDENTIALS_PATH"
   WRITE_CONFIG=1
   if [ -n "$MACHINE_ID" ]; then
     cat > "$STAGE/config.yml" <<EOF
@@ -207,30 +235,26 @@ python3 "$STAGE/release-verify.py" file "$STAGE" xboard-node.service >/dev/null
 for pair in "$BINARY_PATH:xboard-node" "$CONFIG_PATH:config.yml" "$CREDENTIALS_PATH:credentials.env" "$SERVICE_PATH:xboard-node.service"; do
   target="${pair%%:*}"
   name="${pair#*:}"
-  [ -f "$target" ] && cp -p "$target" "$BACKUP/$name"
+  [ ! -L "$target" ] || die "refusing to backup symlink: $target"
+  if [ -f "$target" ]; then
+    install -m 600 "$target" "$BACKUP/$name"
+  fi
 done
-systemctl is-active xboard-node >/dev/null 2>&1 && WAS_ACTIVE=1 || true
-systemctl is-enabled xboard-node >/dev/null 2>&1 && WAS_ENABLED=1 || true
 BACKUP_READY=1
 
 echo ">> [2/4] installing files atomically"
-systemctl stop xboard-node >/dev/null 2>&1 || true
-install -m 755 "$STAGE/xboard-node" "$BINARY_PATH.new"
-mv -f "$BINARY_PATH.new" "$BINARY_PATH"
+safe_replace_file "$STAGE/xboard-node" "$BINARY_PATH" 755 "xboard-node:xboard-node"
 rm -f -- "$BINARY_PATH.bak" "$BINARY_PATH.failed" "$BINARY_PATH.update-pending" "$BINARY_PATH.update-pending.tmp"
 if [ "$WRITE_CONFIG" -eq 1 ]; then
-  install -m 600 "$STAGE/config.yml" "$CONFIG_PATH.new"
-  mv -f "$CONFIG_PATH.new" "$CONFIG_PATH"
-  install -m 600 "$STAGE/credentials.env" "$CREDENTIALS_PATH.new"
-  mv -f "$CREDENTIALS_PATH.new" "$CREDENTIALS_PATH"
+  safe_replace_file "$STAGE/config.yml" "$CONFIG_PATH" 600 "xboard-node:xboard-node"
+  safe_replace_file "$STAGE/credentials.env" "$CREDENTIALS_PATH" 600 "xboard-node:xboard-node"
+else
+  [ ! -L "$CONFIG_PATH" ] || die "refusing symlink config: $CONFIG_PATH"
+  [ ! -L "$CREDENTIALS_PATH" ] || die "refusing symlink credentials: $CREDENTIALS_PATH"
+  [ -f "$CONFIG_PATH" ] && chown -h xboard-node:xboard-node "$CONFIG_PATH" && chmod 600 "$CONFIG_PATH" || true
+  [ -f "$CREDENTIALS_PATH" ] && chown -h xboard-node:xboard-node "$CREDENTIALS_PATH" && chmod 600 "$CREDENTIALS_PATH" || true
 fi
-install -m 644 "$STAGE/xboard-node.service" "$SERVICE_PATH.new"
-mv -f "$SERVICE_PATH.new" "$SERVICE_PATH"
-chown xboard-node:xboard-node "$BINARY_PATH" "$CONFIG_PATH"
-if [ -e "$CREDENTIALS_PATH" ]; then
-  chown xboard-node:xboard-node "$CREDENTIALS_PATH"
-  chmod 600 "$CREDENTIALS_PATH"
-fi
+safe_replace_file "$STAGE/xboard-node.service" "$SERVICE_PATH" 644 "root:root"
 
 echo ">> [3/4] starting systemd service"
 systemctl daemon-reload
