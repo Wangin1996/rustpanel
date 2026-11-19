@@ -4,7 +4,12 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.58`, Agent `v1.1.30`.
+Current releases: panel `v1.1.59`, Agent `v1.1.30`.
+
+Panel `v1.1.59` adjusts the sidebar proportions (`w-60` / `w-16`, `text-sm`
+nav items with `h-9` rows, larger brand mark and admin card typography) so
+the left navigation feels balanced and harmonious with the main workspace.
+The Agent binary and database schema are unchanged.
 
 Panel `v1.1.58` fixes the `release changed after update confirmation` error
 during instant one-click panel updates by resolving GitHub Raw branch URLs
