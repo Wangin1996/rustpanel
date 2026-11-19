@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.50`, Agent `v1.1.28`.
+Current releases: panel `v1.1.50`, Agent `v1.1.29`.
+
+Agent `v1.1.29` upgrades the embedded Mihomo core to `v1.19.34-xboard.2`
+(Go 1.26 uTLS, EasyTier off-heap memory & host-packet drain with `with_easytier`
+opt-in, Snell v6, Mieru `tcp-idle-timeout`, SOCKS overflow fix) and aligns
+Shadowsocks multi-user config to upstream `map[string]string` while preserving
+lock-free in-place `UpdateUsers` hot-swaps. The panel binary and web assets
+are unchanged.
 
 Panel `v1.1.50` completes a 20-item security and reliability hardening pass
 (RP-01 through RP-20): UTF-8 safe share-link decoding and Surge/Loon/QX
