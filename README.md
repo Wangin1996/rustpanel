@@ -4,7 +4,22 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.59`, Agent `v1.1.30`.
+Current releases: panel `v1.1.60`, Agent `v1.1.30`.
+
+Panel `v1.1.60` comprehensively redesigns Access & Security (backend + frontend):
+- Hot-reloadable `admin_path`, `portal_enabled`, `portal_path`, and `subscribe_path`
+  with zero restart required, and scopes `/settings.js` under `/{admin_path}/` to
+  eliminate root-path fingerprint leaks.
+- Admin TOTP 2FA (RFC 6238, AES-256-GCM encrypted secrets, replay-protected,
+  two-step login prompt in `xboard-admin`).
+- Trusted risk-exempt IP/CIDR whitelist (`risk_ip_whitelist`) and optional Admin
+  Login IP/CIDR whitelist (`admin_ip_whitelist_enabled` + self-lockout guard +
+  one-click "fill current IP").
+- Per-token subscription rate limiting (`sub_rate_limit_per_min`, 429 on abuse).
+- Redesigned 4-module Access & Security UI with conditional collapse, 3 risk
+  presets (`宽松`/`标准`/`严格`) + collapsible 14-item advanced tuning, live URL
+  preview, and direct jump to Risk Records.
+The Agent binary and database schema are unchanged.
 
 Panel `v1.1.59` adjusts the sidebar proportions (`w-60` / `w-16`, `text-sm`
 nav items with `h-9` rows, larger brand mark and admin card typography) so
