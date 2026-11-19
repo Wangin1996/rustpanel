@@ -4,7 +4,20 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.49`, Agent `v1.1.28`.
+Current releases: panel `v1.1.50`, Agent `v1.1.28`.
+
+Panel `v1.1.50` completes a 20-item security and reliability hardening pass
+(RP-01 through RP-20): UTF-8 safe share-link decoding and Surge/Loon/QX
+template injection hardening, bounded `MemStore` nonce/throttle caches with
+MySQL replay fallback, read-only `agent_download_base` protection, cross-node
+device-limit snapshot aggregation and broadcast, AES-256-GCM+HKDF encryption
+for certificate private keys with legacy plaintext compatibility, admin secret
+redaction/preservation, deadlock-free & cycle-reset-safe traffic accounting,
+atomic plan-to-user synchronization, cached `panel_config` and supervised
+panic-resilient workers, IPv6 `/64` risk bucketing and isolated admin password
+verification, Fail-Closed routing rules, and SS2022 persisted `server_key`
+client/server parity. Migration 0025 runs automatically on startup. The web
+assets and Agent are unchanged.
 
 Panel `v1.1.39` switches management IP location lookups to iLatency. User IP
 history, subscription access history and risk records use its country, region
