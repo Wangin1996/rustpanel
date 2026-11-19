@@ -4,7 +4,16 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.56`, Agent `v1.1.30`.
+Current releases: panel `v1.1.57`, Agent `v1.1.30`.
+
+Panel `v1.1.57` completes the Precision Minimal Tech visual alignment across
+all 13 `xboard-admin` pages: replaces legacy semi-transparent frosted card
+overrides with crisp high-contrast `bg-card` surfaces, redesigns `Dashboard`
+(7-column dot-KPI strip + progress-bar traffic rankings) and `OverviewCard`
+(top label + glowing semantic dot + monospace KPI), adds the `跟随/浅色/深色`
+segmented switcher to the top command bar, adds live host count badge to the
+sidebar, switches `Settings` to crisp underline tabs, and updates the default
+accent to `#0284c7`. The Agent binary and database schema are unchanged.
 
 Panel `v1.1.56` introduces a cohesive Precision Minimal Tech UI refactor across
 the entire `xboard-admin` console: refined cool-slate light/dark palette and
