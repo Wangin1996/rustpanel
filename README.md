@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.53`, Agent `v1.1.30`.
+Current releases: panel `v1.1.54`, Agent `v1.1.30`.
+
+Panel `v1.1.54` harmonizes the Machines Management UI with the panel's
+native `PageHeader`, `OverviewCard`, frosted `Card`, and `Dialog` design
+language while adding compact Agent version status in the header, clickable
+overview filtering, Table/Card dual views, relative heartbeat timestamps,
+offline stale-load differentiation, and an inline install script block with
+one-click copy at the top of the machine detail dialog. The Agent binary and
+database schema are unchanged.
 
 Panel `v1.1.53` reverts the `v1.1.52` Machines Management UI changes so the
 page stays consistent with the rest of the admin console. The Agent binary
