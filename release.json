@@ -1,13 +1,13 @@
 {
   "format": 1,
-  "panel_version": "v1.1.57",
+  "panel_version": "v1.1.58",
   "agent_version": "v1.1.30",
-  "published_at": 1795077911,
-  "expires_at": 1802853911,
+  "published_at": 1795078296,
+  "expires_at": 1802854296,
   "files": {
     "rust-panel": {
       "size": 13945304,
-      "sha256": "396981c119e8be3e082d65a08fbfe276833f6d12dd42ac62e3597fb610cb109e"
+      "sha256": "8d5d1bf24ae01331605c39b583d31a72ce9feb0c41d64e66dd4e2cc2554623c7"
     },
     "web.tar.gz": {
       "size": 17206873,
@@ -26,8 +26,8 @@
       "sha256": "56bd5ee2d685af8b6b94e256a3ca5200ed44df4db46c5a4b13c491faf5d42896"
     },
     "install-panel.sh": {
-      "size": 20969,
-      "sha256": "4b8de7f301e451aa01e5c05723345f55748e72007e115a1138f1314058adae24"
+      "size": 21015,
+      "sha256": "4f6bee00dacb90f9cecbfe8866e51a2a44d2413fddb57a01d30e8cae4b94f4f7"
     },
     "install-node.sh": {
       "size": 10770,
@@ -46,8 +46,8 @@
       "sha256": "9131abaaf06c607dfb9fad4225fd6af52c0d8502de742aae7e1664709e37609e"
     },
     "release-verify.py": {
-      "size": 13056,
-      "sha256": "f186f3bdb590d474b3d4fcfa4d037a55751ddfa711426e3027612d009d912314"
+      "size": 14292,
+      "sha256": "85a681977ae1b4a8bb92ef87ee02ad44d56bf24e3b0e8766ce4472b27df567d5"
     },
     "panel-update-helper.sh": {
       "size": 119,

@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 
 DEFAULT_BASE = "https://raw.githubusercontent.com/Wangin1996/rustpanel/main"
+GITHUB_RAW = re.compile(r"^https://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)$")
+COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 VERSION = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 DIGEST = re.compile(r"^[0-9a-f]{64}$")
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
@@ -111,6 +113,33 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("release redirects are disabled")
 
 
+def resolve_raw_base(base):
+    cleaned = (base or "").rstrip("/")
+    match = GITHUB_RAW.fullmatch(cleaned)
+    if not match or COMMIT_SHA.fullmatch(match.group(3)):
+        return cleaned
+    owner, repo, ref = match.groups()
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/commits/{urllib.parse.quote(ref, safe='')}"
+    try:
+        req = urllib.request.Request(
+            api_url,
+            headers={
+                "Accept": "application/vnd.github.sha",
+                "User-Agent": "rust-panel-updater",
+                "Cache-Control": "no-cache",
+            },
+        )
+        opener = urllib.request.build_opener(NoRedirect())
+        with opener.open(req, timeout=8) as resp:
+            if resp.status == 200:
+                sha = resp.read(64).decode("utf-8", errors="ignore").strip().lower()
+                if COMMIT_SHA.fullmatch(sha):
+                    return f"https://raw.githubusercontent.com/{owner}/{repo}/{sha}"
+    except Exception:
+        pass
+    return cleaned
+
+
 def download(base, name, destination, limit):
     parsed = urllib.parse.urlparse(base)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or not NAME.fullmatch(name):
@@ -196,7 +225,8 @@ def apply_request():
             if release_version(request.get("target_version")) <= release_version(current):
                 raise ValueError("same-version updates and downgrades are refused")
             base_file = Path("/etc/rust-panel/update-base")
-            base = base_file.read_text().strip() if base_file.exists() else DEFAULT_BASE
+            config_base = base_file.read_text().strip() if base_file.exists() else DEFAULT_BASE
+            base = resolve_raw_base(config_base)
             status("downloading", "Downloading and verifying release files")
             with tempfile.TemporaryDirectory(prefix="rust-panel-update-") as temporary:
                 stage = Path(temporary)
@@ -207,7 +237,7 @@ def apply_request():
                 download(base, "install-panel.sh", stage / "install-panel.sh", data["files"]["install-panel.sh"]["size"])
                 installer = artifact(stage, data, "install-panel.sh")
                 status("installing", "Installing verified files; panel will briefly restart")
-                environment = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "RP_BASE": base, "RP_EXPECTED_MANIFEST_SHA256": request["manifest_sha256"]}
+                environment = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/root", "LANG": "C.UTF-8", "RP_BASE": base, "RP_CONFIG_BASE": config_base, "RP_EXPECTED_MANIFEST_SHA256": request["manifest_sha256"]}
                 result_path = stage / "installer-result"
                 environment["RP_INSTALL_RESULT"] = str(result_path)
                 process = subprocess.Popen(["bash", str(installer)], env=environment, start_new_session=True)

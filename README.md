@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.57`, Agent `v1.1.30`.
+Current releases: panel `v1.1.58`, Agent `v1.1.30`.
+
+Panel `v1.1.58` fixes the `release changed after update confirmation` error
+during instant one-click panel updates by resolving GitHub Raw branch URLs
+to immutable commit-SHA URLs inside `release-verify.py` (matching the panel's
+instant update checker) while preserving the original branch URL in
+`/etc/rust-panel/update-base` via `RP_CONFIG_BASE` in `install-panel.sh`.
+The Agent binary and database schema are unchanged.
 
 Panel `v1.1.57` completes the Precision Minimal Tech visual alignment across
 all 13 `xboard-admin` pages: replaces legacy semi-transparent frosted card

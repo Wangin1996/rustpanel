@@ -10,6 +10,7 @@
 set -euo pipefail
 
 BASE="${RP_BASE:-https://raw.githubusercontent.com/Wangin1996/rustpanel/main}"
+CONFIG_BASE="${RP_CONFIG_BASE:-$BASE}"
 BIND="${1:-}"
 INSTALLER_REVISION=20260909.1
 INSTALL_DIR=/opt/rust-panel
@@ -442,7 +443,7 @@ install -o root -g root -m 644 "$STAGE/release-verify.py" /usr/local/libexec/rus
 mv -f /usr/local/libexec/rust-panel-release-verify.new /usr/local/libexec/rust-panel-release-verify
 install -o root -g root -m 644 "$STAGE/rust-panel-update.service" /etc/systemd/system/rust-panel-update.service
 install -o root -g root -m 644 "$STAGE/rust-panel-update.path" /etc/systemd/system/rust-panel-update.path
-printf '%s\n' "$BASE" > "$STAGE/update-base"
+printf '%s\n' "$CONFIG_BASE" > "$STAGE/update-base"
 install -o root -g root -m 644 "$STAGE/update-base" "$CONFIG_DIR/update-base"
 chown rust-panel:rust-panel "$ENV_FILE"
 chmod 600 "$ENV_FILE"
