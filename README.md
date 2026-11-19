@@ -4,7 +4,17 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.55`, Agent `v1.1.30`.
+Current releases: panel `v1.1.56`, Agent `v1.1.30`.
+
+Panel `v1.1.56` introduces a cohesive Precision Minimal Tech UI refactor across
+the entire `xboard-admin` console: refined cool-slate light/dark palette and
+crisp 1px hairlines, 4-domain operational navigation (`Overview` ->
+`Infrastructure` -> `Users & Delivery` -> `Security & System`), sticky top
+command bar with breadcrumbs and a global `Cmd/Ctrl+K` Command Palette,
+unified `PageHeader` / `OverviewCard` / `Card` / `Table` primitives, and
+consolidated 4-tab System Settings (`基础配置` merging site/subscribe/server,
+`节点国旗`, `访问与安全`, `外观偏好`). The Agent binary and database schema
+are unchanged.
 
 Panel `v1.1.55` allows manually refreshing/syncing disabled external
 subscription sources (while keeping scheduled background sync limited to
