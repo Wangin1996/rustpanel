@@ -4,7 +4,19 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.60`, Agent `v1.1.30`.
+Current releases: panel `v1.1.61`, Agent `v1.1.30`.
+
+Panel `v1.1.61` overhauls Node Flags and External Subscriptions (backend + frontend):
+- Node Flags: fixes `ip-api.com` free-tier HTTP endpoint, adds `node_flag_override_existing`
+  to strip and uniformly re-render existing flags (making `TW -> CN` and `[HK]`/text styles
+  100% consistent across all nodes), and redesigns the Settings UI with live preview,
+  conditional collapse, and collapsible GeoIP advanced controls.
+- External Subscriptions: adds native Clash/Mihomo YAML (`proxies:`) parser support
+  alongside Base64/plain links, pre-sync filtering (auto-filter traffic/expiry/website info
+  nodes + include/exclude regex + strip upstream flags), live "Test Fetch & Preview" before
+  saving (`admin.subscription_sources.test`), and expanded node list search + status filter +
+  batch enable/disable (`admin.external_nodes.batch_toggle`).
+The Agent binary and database schema are unchanged.
 
 Panel `v1.1.60` comprehensively redesigns Access & Security (backend + frontend):
 - Hot-reloadable `admin_path`, `portal_enabled`, `portal_path`, and `subscribe_path`
