@@ -4,7 +4,13 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.54`, Agent `v1.1.30`.
+Current releases: panel `v1.1.55`, Agent `v1.1.30`.
+
+Panel `v1.1.55` allows manually refreshing/syncing disabled external
+subscription sources (while keeping scheduled background sync limited to
+enabled sources) and changes newly imported external subscription nodes to
+default to disabled (`enabled = 0`) so admins can explicitly choose which
+synced nodes to expose. The Agent binary and database schema are unchanged.
 
 Panel `v1.1.54` harmonizes the Machines Management UI with the panel's
 native `PageHeader`, `OverviewCard`, frosted `Card`, and `Dialog` design
