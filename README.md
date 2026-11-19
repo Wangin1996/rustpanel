@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.50`, Agent `v1.1.29`.
+Current releases: panel `v1.1.51`, Agent `v1.1.30`.
+
+Panel `v1.1.51` and Agent `v1.1.30` add full single-port multi-user Snell
+(v1–v6) support with lock-free in-place `UpdateUsers` hot-swaps (`mihomo`
+`v1.19.34-xboard.3`), Snell subscription rendering (Mihomo v1–v6, Surge v1–v6,
+Stash v1–v5, URI), Create/Edit Node Snell UI in `xboard-admin`, and instant
+update detection by resolving GitHub Raw commits via immutable commit SHAs
+with shared panel/agent release caching. No new database migrations are
+included.
 
 Agent `v1.1.29` upgrades the embedded Mihomo core to `v1.19.34-xboard.2`
 (Go 1.26 uTLS, EasyTier off-heap memory & host-packet drain with `with_easytier`
