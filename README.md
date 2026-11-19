@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.51`, Agent `v1.1.30`.
+Current releases: panel `v1.1.52`, Agent `v1.1.30`.
+
+Panel `v1.1.52` redesigns the Machines Management UI (`xboard-admin`) with a
+compact header and inline Agent version pill, clickable 4-metric strip,
+Table & Monitoring Card dual views, inline SVG region flags, relative
+heartbeat timestamps, clear offline stale-load differentiation, floating
+bulk-action bar, and a right slide-over detail drawer that displays the
+install script directly inline with one-click copy. The Agent binary and
+database schema are unchanged.
 
 Panel `v1.1.51` and Agent `v1.1.30` add full single-port multi-user Snell
 (v1–v6) support with lock-free in-place `UpdateUsers` hot-swaps (`mihomo`
