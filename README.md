@@ -4,7 +4,12 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.61`, Agent `v1.1.30`.
+Current releases: panel `v1.1.62`, Agent `v1.1.30`.
+
+Panel `v1.1.62` redesigns the Dashboard into a cohesive 4-column composite KPI
+strip + conditional host/agent alert banner + 2:1 cockpit layout pairing
+progress-bar traffic rankings with a live Host Health Matrix and quick
+shortcuts. The Agent binary and database schema are unchanged.
 
 Panel `v1.1.61` overhauls Node Flags and External Subscriptions (backend + frontend):
 - Node Flags: fixes `ip-api.com` free-tier HTTP endpoint, adds `node_flag_override_existing`
