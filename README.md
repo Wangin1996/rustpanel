@@ -4,7 +4,17 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.63`, Agent `v1.1.30`.
+Current releases: panel `v1.1.64`, Agent `v1.1.30`.
+
+Panel `v1.1.64` brings the v1.1.63 Dashboard visual system uniformly across all
+12 remaining admin pages (Machines, Nodes, Node Groups, Routes, Outbounds,
+Certificates, Plans, Users, Templates, Risk Records, Audit Log, and System
+Settings): upgrades shared `OverviewCard`, `Card`, `Table`, `Tabs`, `PageHeader`,
+`EmptyState`, and `DataPagination` primitives to airy `rounded-2xl` surfaces
+with soft semantic icon tiles, replaces legacy frosted/pill tab bars with
+unified segmented controls, adds a 4-card KPI strip to Certificates, wraps Risk
+signal distribution in a dedicated card, and integrates Audit search cleanly
+inside its table card. The Agent binary and database schema are unchanged.
 
 Panel `v1.1.63` elevates the Dashboard into a clean, modern telemetry cockpit:
 airy 4-column hero KPI cards with icon badges, an interactive Recharts gradient
