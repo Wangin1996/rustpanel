@@ -4,7 +4,14 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.62`, Agent `v1.1.30`.
+Current releases: panel `v1.1.63`, Agent `v1.1.30`.
+
+Panel `v1.1.63` elevates the Dashboard into a clean, modern telemetry cockpit:
+airy 4-column hero KPI cards with icon badges, an interactive Recharts gradient
+bar chart for node traffic distribution (`今日 / 昨日 / 近 7 天` switcher with
+total sum & share tooltips), a borderless Live Host Telemetry panel with
+color-coded CPU/MEM micro-bars, and synced node breakdown + 7-day top users
+cards. The Agent binary and database schema are unchanged.
 
 Panel `v1.1.62` redesigns the Dashboard into a cohesive 4-column composite KPI
 strip + conditional host/agent alert banner + 2:1 cockpit layout pairing
