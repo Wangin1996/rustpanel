@@ -4,21 +4,7 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.67`, Agent `v1.1.32`.
-
-Panel `v1.1.67` (Agent remains `v1.1.32`):
-- Completes the Engineering UI v2 full refactoring across `xboard-admin` (all 14 routes)
-  and `user-portal`: restrained Linear/Vercel/Cloudflare Zinc Light & Dark design system
-  with 1px hairline borders, strict `tabular-nums` alignment, standard cross-platform
-  inline vector `<svg>` region flags (`<FlagIcon />` / `<RegionBadge />`), 720px Slide-over
-  Drawers replacing oversized scrolling modals (including a 5-tab Node Drawer with all 21
-  ACME DNS-01 providers & symmetric `show`/`enabled` switches, a 4-tab User & Quota Drawer
-  with GB/MB unit selectors & offline subscription QR code, and a Machine Detail Drawer),
-  inline CPU/MEM micro-bars + 13-metric telemetry inspector, offline TOTP 2FA QR code in
-  Access Security, mobile-accessible reorder buttons in `SortableList`, active-tab-only
-  polling in Risk Records, full summary retention in Audit Log, and a redesigned User
-  Portal with offline SVG QR codes, SVG node flags, and a 9-client 1-click import matrix.
-  Zero backend API contract or database schema changes.
+Current releases: panel `v1.1.68` (restores `v1.1.66` UI baseline), Agent `v1.1.32`.
 
 Panel `v1.1.66` and Agent `v1.1.32`:
 - Panel `v1.1.66` fixes `/healthz` loopback version reporting during `install-panel.sh`
