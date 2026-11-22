@@ -1,29 +1,29 @@
 {
   "format": 1,
-  "panel_version": "v1.1.65",
-  "agent_version": "v1.1.31",
-  "published_at": 1795334992,
-  "expires_at": 1803110992,
+  "panel_version": "v1.1.66",
+  "agent_version": "v1.1.32",
+  "published_at": 1795335752,
+  "expires_at": 1803111752,
   "files": {
     "rust-panel": {
-      "size": 14267864,
-      "sha256": "c99fa8e2b117a6c0e964446ca9ccbdfd22a49b278c30cdbdf9b2858c8d1d433d"
+      "size": 14270328,
+      "sha256": "54deba2ee354d36d1c1f017f2fffc63601987aca86b7ba81e5c1ee108e9db530"
     },
     "web.tar.gz": {
       "size": 656541,
       "sha256": "7a7a6122617522712a4cd0c66123a6374a6d513c7d6f466131d0c7f8bb6011fe"
     },
     "xboard-node": {
-      "size": 83460258,
-      "sha256": "810a8997f131543157a967cc30011f847f3945c028ff785409a65a6f17d05f5f"
+      "size": 68190370,
+      "sha256": "8bacb6910fb4b15612c90d23f101e1c22c7a5c7ba92025d50f7e236aa5c21dec"
     },
     "xboard-node.sha256": {
       "size": 78,
-      "sha256": "b2506154c55ae61d67662d16a5344f4edae299c1562d7f47236e396dd2335c88"
+      "sha256": "b00e28e33cf22360e17e920132eada16ca56d8385b7b52b3da88bc86822be0fb"
     },
     "xboard-node.version": {
       "size": 8,
-      "sha256": "e334bc4d6e88878c0b622eb435fcd49d8facd8d61f34207e2e1d4cebb2c26bb1"
+      "sha256": "e6ce979e3f49a31d0256e8c68fdcbfe42f8c0382bd94c8993a30eb3c6ea69b15"
     },
     "install-panel.sh": {
       "size": 21986,

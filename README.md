@@ -4,7 +4,19 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.65`, Agent `v1.1.31`.
+Current releases: panel `v1.1.66`, Agent `v1.1.32`.
+
+Panel `v1.1.66` and Agent `v1.1.32`:
+- Panel `v1.1.66` fixes `/healthz` loopback version reporting during `install-panel.sh`
+  health checks (returning `rust-panel vX.Y.Z` for local loopback installer probes
+  while still returning plain `ok` to external reverse-proxied callers in
+  production) and sets `ignore_missing` on `sqlx::migrate!` + `build.rs`
+  `rerun-if-changed=migrations-mysql` so rollbacks after additive migrations never
+  crash-loop.
+- Agent `v1.1.32` removes the unused client-side `with_gvisor` build tag and enables
+  `-trimpath` across `Makefile` and `Dockerfile`, shrinking the `xboard-node`
+  binary by ~15.3 MB (`83.5 MB` -> `68.2 MB`) while keeping full WireGuard
+  outbound support via Mihomo's native MIPS stack.
 
 Panel `v1.1.65` and Agent `v1.1.31` (with `mihomo v1.19.34-xboard.4`) complete a
 full-repository security, reliability, billing, and UX hardening pass:
