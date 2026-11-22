@@ -25,8 +25,9 @@ command -v curl >/dev/null || { echo "curl is required"; exit 1; }
 command -v tar >/dev/null || { echo "tar is required"; exit 1; }
 command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }
 
-mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+mkdir -p "$INSTALL_DIR"
 STAGE="$(mktemp -d /tmp/rust-panel-install.XXXXXX)"
+chmod 700 "$STAGE"
 WAS_ACTIVE=0
 INSTALL_STARTED=0
 INSTALL_OK=0
@@ -45,7 +46,15 @@ cleanup() {
     [ -d "$BACKUP_DIR/user-portal" ] && cp -a "$BACKUP_DIR/user-portal" "$INSTALL_DIR/user-portal"
     [ -f "$BACKUP_DIR/rust-panel" ] && cp -a "$BACKUP_DIR/rust-panel" "$INSTALL_DIR/rust-panel"
     [ -f "$BACKUP_DIR/rust-panel.service" ] && cp -a "$BACKUP_DIR/rust-panel.service" /etc/systemd/system/rust-panel.service
-    [ -f "$BACKUP_DIR/panel.env" ] && cp -a "$BACKUP_DIR/panel.env" "$ENV_FILE"
+    if [ -f "$BACKUP_DIR/panel.env" ]; then
+      if getent passwd rust-panel >/dev/null 2>&1; then
+        install -d -o root -g rust-panel -m 750 "$CONFIG_DIR"
+        install -o rust-panel -g rust-panel -m 600 "$BACKUP_DIR/panel.env" "$ENV_FILE"
+      else
+        install -d -o root -g root -m 750 "$CONFIG_DIR"
+        install -o root -g root -m 600 "$BACKUP_DIR/panel.env" "$ENV_FILE"
+      fi
+    fi
     for pair in $AUX_FILES; do
       target="${pair%%:*}"; name="${pair#*:}"
       if [ -f "$BACKUP_DIR/$name" ]; then
@@ -277,17 +286,21 @@ set_env_value() {
   output="${env_path}.tmp"
   found=0
   line=""
-  : > "$output"
-  while IFS= read -r line || [ -n "$line" ]; do
-    if [[ "$line" == "$key="* ]]; then
-      printf '%s=%s\n' "$key" "$value" >> "$output"
-      found=1
-    else
-      printf '%s\n' "$line" >> "$output"
-    fi
-  done < "$env_path"
-  if [ "$found" = 0 ]; then printf '%s=%s\n' "$key" "$value" >> "$output"; fi
-  mv "$output" "$env_path"
+  (
+    umask 077
+    : > "$output"
+    while IFS= read -r line || [ -n "$line" ]; do
+      if [[ "$line" == "$key="* ]]; then
+        printf '%s=%s\n' "$key" "$value" >> "$output"
+        found=1
+      else
+        printf '%s\n' "$line" >> "$output"
+      fi
+    done < "$env_path"
+    if [ "$found" = 0 ]; then printf '%s=%s\n' "$key" "$value" >> "$output"; fi
+    chmod 600 "$output"
+    mv "$output" "$env_path"
+  )
 }
 
 OLD_DATABASE_URL=""
@@ -332,7 +345,11 @@ validate_database_url "$MYSQL_URL" || { echo "invalid DATABASE_URL" >&2; exit 1;
 NEW_ADMIN=0
 PW=""
 if [ -f "$ENV_FILE" ]; then
-  cp "$ENV_FILE" "$STAGE/panel.env"
+  (
+    umask 077
+    cp "$ENV_FILE" "$STAGE/panel.env"
+    chmod 600 "$STAGE/panel.env"
+  )
 else
   if [ -z "$BIND" ]; then
     BIND="127.0.0.1:$(random_unused_port)"
@@ -343,7 +360,9 @@ else
   IDENTITY_KEY="$(random_hex 32)"
   # 112 random bits plus every required character class; safe in panel.env.
   PW="Aa9-$(random_hex 14)"
-  cat > "$STAGE/panel.env" <<EOF
+  (
+    umask 077
+    cat > "$STAGE/panel.env" <<EOF
 APP_BIND=$BIND
 APP_ENV=prod
 DATABASE_URL=$MYSQL_URL
@@ -374,6 +393,8 @@ ADMIN_DIST=/opt/rust-panel/xboard-admin/dist
 USER_PORTAL_DIR=/opt/rust-panel/user-portal
 RUST_LOG=info,rust_panel=info
 EOF
+    chmod 600 "$STAGE/panel.env"
+  )
   NEW_ADMIN=1
 fi
 ACTIVE_BIND_CONFIG="$(sed -n 's/^APP_BIND=//p' "$STAGE/panel.env" | tail -n 1)"
@@ -397,6 +418,8 @@ sed -i '/^IP2REGION_DIR=/d; /^IP2REGION_V4_XDB=/d; /^IP2REGION_V6_XDB=/d' "$STAG
 if grep -qx 'JWT_TTL_SECS=86400' "$STAGE/panel.env"; then
   set_env_value "$STAGE/panel.env" JWT_TTL_SECS 7200
 fi
+
+chmod 600 "$STAGE/panel.env"
 
 if systemctl is-active --quiet rust-panel; then
   WAS_ACTIVE=1
@@ -431,10 +454,15 @@ mv "$STAGE/web/user-portal" "$INSTALL_DIR/user-portal"
 mv "$STAGE/rust-panel" "$INSTALL_DIR/rust-panel"
 chmod +x "$INSTALL_DIR/rust-panel"
 mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
-mv "$STAGE/panel.env" "$ENV_FILE"
 if ! getent passwd rust-panel >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/rust-panel --shell /usr/sbin/nologin rust-panel
 fi
+install -d -o root -g rust-panel -m 750 "$CONFIG_DIR"
+chmod 750 "$CONFIG_DIR"
+chown root:rust-panel "$CONFIG_DIR"
+install -o rust-panel -g rust-panel -m 600 "$STAGE/panel.env" "$ENV_FILE.new"
+mv -f "$ENV_FILE.new" "$ENV_FILE"
+rm -f "$STAGE/panel.env"
 install -d -o rust-panel -g rust-panel -m 700 /var/lib/rust-panel
 install -d -o root -g root -m 755 /usr/local/libexec /var/lib/rust-panel-updater
 install -o root -g root -m 755 "$STAGE/panel-update-helper.sh" /usr/local/libexec/rust-panel-update.new
@@ -445,8 +473,6 @@ install -o root -g root -m 644 "$STAGE/rust-panel-update.service" /etc/systemd/s
 install -o root -g root -m 644 "$STAGE/rust-panel-update.path" /etc/systemd/system/rust-panel-update.path
 printf '%s\n' "$CONFIG_BASE" > "$STAGE/update-base"
 install -o root -g root -m 644 "$STAGE/update-base" "$CONFIG_DIR/update-base"
-chown rust-panel:rust-panel "$ENV_FILE"
-chmod 600 "$ENV_FILE"
 rm -rf "$INSTALL_DIR/ip2region"
 rm -f "$INSTALL_DIR/ip2region_v4.xdb" "$INSTALL_DIR/ip2region_v6.xdb"
 
@@ -482,6 +508,15 @@ if [ "$stable" -lt 10 ]; then
   systemctl --no-pager -l status rust-panel || true
   journalctl -u rust-panel -n 50 --no-pager || true
   exit 1
+fi
+if [ "$NEW_ADMIN" = 1 ] && [ -f "$ENV_FILE" ]; then
+  (
+    umask 077
+    grep -v '^BOOTSTRAP_ADMIN_PASSWORD=' "$ENV_FILE" > "$ENV_FILE.tmp" || true
+    chown rust-panel:rust-panel "$ENV_FILE.tmp"
+    chmod 600 "$ENV_FILE.tmp"
+    mv -f "$ENV_FILE.tmp" "$ENV_FILE"
+  )
 fi
 printf '%s\n' "$RELEASE_VERSION" > "$STAGE/release-version"
 install -o root -g root -m 644 "$STAGE/release-version" "$INSTALL_DIR/.release-version"

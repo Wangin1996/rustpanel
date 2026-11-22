@@ -4,7 +4,32 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.64`, Agent `v1.1.30`.
+Current releases: panel `v1.1.65`, Agent `v1.1.31`.
+
+Panel `v1.1.65` and Agent `v1.1.31` (with `mihomo v1.19.34-xboard.4`) complete a
+full-repository security, reliability, billing, and UX hardening pass:
+- Panel (`v1.1.65`): fixes Admin TOTP 2FA login (`AppError::Unprocessable` message
+  preservation + `refund_login` + transactional `FOR UPDATE` TOTP store + rate
+  limiting), enforces mutual `client_proof` HMAC on secure WebSocket handshakes,
+  fixes IPv6 `/128` CIDR truncation & mapped-IPv4 underflow in `CidrRange`,
+  enforces `portal_enabled` & admin protection on `Scope::User`, adds YAML
+  alias-bomb guards, fixes `node_flag_override_existing` GeoIP re-resolution and
+  `TW -> CN` region ordering, fixes Hysteria default v2 & cross-source proxy name
+  deduplication, preserves route `sort` on edit, adds an explicit `sync_existing_users`
+  switch when editing plans, raises default `MAX_BODY_BYTES` / Nginx body ceiling
+  to 4 MiB, hardens `install-panel.sh` `0600` atomic `panel.env` permissions, and
+  shrinks `web.tar.gz` by 96% (~641 KB) while fixing all audited Admin UI and
+  User Portal edge cases. Includes automatic MySQL `utf8mb4` migration `0026`.
+- Agent (`v1.1.31` + `mihomo v1.19.34-xboard.4`): enforces mandatory gateway and
+  heartbeat `response_proof` + WebSocket `client_proof`, eliminates cumulative
+  traffic double-billing on `Mihomo.Start` and rapid remove/re-add traffic loss
+  via two-phase `SnapshotScope` eviction, fixes Hysteria2 UDP fragmentation bounds
+  & pool ownership, hardens Snell v1-v6 (`obfs_host` parity, single-pass Argon2id,
+  `v6-default` prefix fast-path, salt replay filter, idle timeouts), fixes Trojan
+  TLS fail-closed enforcement, VMess AEAD trial loop & `authId` replay filter,
+  zero-copy dynamic speed-limit enforcement, mux session revocation, machine
+  `NodeMailbox` revision clocks & `401/403` revocation, DNS-01 & custom-route SSRF
+  guards, and pre-exec `xbctl` signature verification.
 
 Panel `v1.1.64` brings the v1.1.63 Dashboard visual system uniformly across all
 12 remaining admin pages (Machines, Nodes, Node Groups, Routes, Outbounds,
@@ -285,8 +310,8 @@ curl -fsSL https://raw.githubusercontent.com/Wangin1996/rustpanel/main/install-n
   --url "https://panel.example.com" --token "TOKEN" --machine-id 1
 ```
 
-Online Agents can be upgraded from the panel's machine management page. Agent
-release `v1.1.9` is verified with all three of these checks before activation:
+Online Agents can be upgraded from the panel's machine management page. Each
+Agent release is verified with all three of these checks before activation:
 
 - SHA-256 matches `xboard-node.sha256`.
 - The executable identifies itself as `xboard-node`.
@@ -314,6 +339,6 @@ The Nginx example is not installed automatically. Adapt its domain, certificate
 paths and upstream port before using it; existing proxy configurations are not
 changed by the panel installer.
 
-IP locations are resolved through the ip.2kaixin.com JSON API. Dashboard requests
+IP locations are resolved through the iLatency JSON API. Dashboard requests
 return cached data immediately while missing or expired locations are refreshed
 in the background, so a slow lookup does not hold up the table response.

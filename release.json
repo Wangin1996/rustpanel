@@ -1,33 +1,33 @@
 {
   "format": 1,
-  "panel_version": "v1.1.64",
-  "agent_version": "v1.1.30",
-  "published_at": 1795254333,
-  "expires_at": 1803030333,
+  "panel_version": "v1.1.65",
+  "agent_version": "v1.1.31",
+  "published_at": 1795334992,
+  "expires_at": 1803110992,
   "files": {
     "rust-panel": {
-      "size": 14056712,
-      "sha256": "e363e6e95e49eaa9f236d19bc2470a604ead0a02c7a2cd85808760cb5ba22f69"
+      "size": 14267864,
+      "sha256": "c99fa8e2b117a6c0e964446ca9ccbdfd22a49b278c30cdbdf9b2858c8d1d433d"
     },
     "web.tar.gz": {
-      "size": 19708715,
-      "sha256": "983117717ce367a7ae7826379b0d438d5b47ebf6536e45448ba3894acc5e4542"
+      "size": 656541,
+      "sha256": "7a7a6122617522712a4cd0c66123a6374a6d513c7d6f466131d0c7f8bb6011fe"
     },
     "xboard-node": {
-      "size": 83284130,
-      "sha256": "0f1f340063e1291fea8e54aa913eb8c7b43d46bc52ae8e5b23047be1ec7c511c"
+      "size": 83460258,
+      "sha256": "810a8997f131543157a967cc30011f847f3945c028ff785409a65a6f17d05f5f"
     },
     "xboard-node.sha256": {
       "size": 78,
-      "sha256": "6f409ffa51f0816a2c2eff29f94c9fec0c5d19318da8779d1c3ef2cce285e214"
+      "sha256": "b2506154c55ae61d67662d16a5344f4edae299c1562d7f47236e396dd2335c88"
     },
     "xboard-node.version": {
       "size": 8,
-      "sha256": "56bd5ee2d685af8b6b94e256a3ca5200ed44df4db46c5a4b13c491faf5d42896"
+      "sha256": "e334bc4d6e88878c0b622eb435fcd49d8facd8d61f34207e2e1d4cebb2c26bb1"
     },
     "install-panel.sh": {
-      "size": 21015,
-      "sha256": "4f6bee00dacb90f9cecbfe8866e51a2a44d2413fddb57a01d30e8cae4b94f4f7"
+      "size": 21986,
+      "sha256": "d370e8ffb49d97cf7cd49b46fd9064a2d1d133f7fcd70926e482da8c2b9782cc"
     },
     "install-node.sh": {
       "size": 10770,
@@ -42,8 +42,8 @@
       "sha256": "63f2933f44b4dc1b958c2de86d1d6320e39af10705df13d26edf7ee84e627395"
     },
     "nginx-panel.conf": {
-      "size": 4145,
-      "sha256": "9131abaaf06c607dfb9fad4225fd6af52c0d8502de742aae7e1664709e37609e"
+      "size": 4161,
+      "sha256": "21f8bfecd5ad297ae5e29cd6f6424615efc3505dc88a28b968153624e8a5efac"
     },
     "release-verify.py": {
       "size": 14292,
