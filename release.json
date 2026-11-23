@@ -2,8 +2,8 @@
   "format": 1,
   "panel_version": "v1.1.68",
   "agent_version": "v1.1.32",
-  "published_at": 1795342105,
-  "expires_at": 1803118105,
+  "published_at": 1795406082,
+  "expires_at": 1803182082,
   "files": {
     "rust-panel": {
       "size": 14270328,
@@ -26,12 +26,12 @@
       "sha256": "e6ce979e3f49a31d0256e8c68fdcbfe42f8c0382bd94c8993a30eb3c6ea69b15"
     },
     "install-panel.sh": {
-      "size": 21986,
-      "sha256": "d370e8ffb49d97cf7cd49b46fd9064a2d1d133f7fcd70926e482da8c2b9782cc"
+      "size": 22070,
+      "sha256": "13585cb91f7d17a8872774455c8db4159a087ade0996a316613dd96e6fe314a0"
     },
     "install-node.sh": {
-      "size": 10770,
-      "sha256": "42d10fd13becf3e57fb1b843ad98bc025251352d209fb7477852789d45dfa394"
+      "size": 10753,
+      "sha256": "bdca41399d09e64f5daf8e88b9c2e15c01e6783d3e814c2d72dedc28ce9fe52f"
     },
     "rust-panel.service": {
       "size": 912,

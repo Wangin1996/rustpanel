@@ -25,8 +25,9 @@ command -v curl >/dev/null || { echo "curl is required"; exit 1; }
 command -v tar >/dev/null || { echo "tar is required"; exit 1; }
 command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }
 
+[ ! -L "/opt" ] || { echo "/opt must not be a symlink" >&2; exit 1; }
 mkdir -p "$INSTALL_DIR"
-STAGE="$(mktemp -d /tmp/rust-panel-install.XXXXXX)"
+STAGE="$(umask 077 && mktemp -d /opt/.rust-panel-install.XXXXXX)"
 chmod 700 "$STAGE"
 WAS_ACTIVE=0
 INSTALL_STARTED=0

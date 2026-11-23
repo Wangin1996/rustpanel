@@ -60,12 +60,10 @@ if ! id xboard-node >/dev/null 2>&1; then
   useradd --system --gid xboard-node --home-dir "$INSTALL_DIR" --shell /usr/sbin/nologin xboard-node
 fi
 
-STAGE_BASE="/run"
-if [ ! -d "$STAGE_BASE" ] || [ ! -w "$STAGE_BASE" ]; then
-  STAGE_BASE="/root"
-  mkdir -p -m 700 "$STAGE_BASE"
-fi
-STAGE="$(umask 077 && mktemp -d "$STAGE_BASE/xboard-node-stage.XXXXXX")"
+STAGE_BASE="/opt"
+[ ! -L "$STAGE_BASE" ] || die "$STAGE_BASE must not be a symlink"
+mkdir -p -m 755 "$STAGE_BASE"
+STAGE="$(umask 077 && mktemp -d "$STAGE_BASE/.xboard-node-stage.XXXXXX")"
 chown -h root:root "$STAGE"
 chmod 700 "$STAGE"
 BACKUP="$STAGE/backup"
