@@ -4,7 +4,17 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.69`, Agent `v1.1.32`.
+Current releases: panel `v1.1.70`, Agent `v1.1.32`.
+
+Panel `v1.1.70` (Agent remains `v1.1.32`):
+- Fixes the Subscriptions Template editor (`@codemirror/state` duplicate instance
+  runtime crash) by removing the stale nested `node_modules/node_modules/@codemirror`
+  copy and adding explicit `resolve.dedupe` for `@codemirror/*` and `@lezer/*` in
+  `xboard-admin/vite.config.ts`.
+- Redesigns the Dashboard (`dashboard.tsx`) in authentic Linear visual language:
+  unified 4-column hairline-divided metric strip, flat monochrome-plus-accent
+  Recharts traffic distribution bar chart with crisp horizontal hairlines, and
+  full-bleed hairline-divided host telemetry & node/user traffic ranking panels.
 
 Panel `v1.1.69` (Agent remains `v1.1.32`):
 - Refactors `xboard-admin` and `user-portal` around Linear's restrained, high-density
