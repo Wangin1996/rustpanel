@@ -4,7 +4,15 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.71`, Agent `v1.1.32`.
+Current releases: panel `v1.1.72`, Agent `v1.1.32`.
+
+Panel `v1.1.72` (Agent remains `v1.1.32`):
+- Refines typography scale and visual depth across the Linear UI (`xboard-admin` +
+  `user-portal`): restores comfortable `14px` base text, `36px` (`h-9`) controls,
+  `56px` topbar, `236px` sidebar, `20px` page titles, and `24–26px` KPI figures for
+  crisp Chinese readability on high-DPI displays; adds subtle top ambient indigo
+  depth, tinted active sidebar states, and restrained semantic icon badges in
+  `MetricStrip` and `Dashboard`.
 
 Panel `v1.1.71` (Agent remains `v1.1.32`):
 - Completes the full Linear visual architecture refactor across all 14 `xboard-admin`
