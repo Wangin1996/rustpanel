@@ -4,7 +4,19 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.70`, Agent `v1.1.32`.
+Current releases: panel `v1.1.71`, Agent `v1.1.32`.
+
+Panel `v1.1.71` (Agent remains `v1.1.32`):
+- Completes the full Linear visual architecture refactor across all 14 `xboard-admin`
+  pages and `user-portal`: introduces shared Linear primitives (`MetricStrip`,
+  `LinearPanel`, `LinearPanelHeader`, `LinearToolbar`, `LinearSegmentedControl`,
+  `StatusDot`, `LinearBadge`, right-side `Drawer`), replaces all disconnected 4-card
+  KPI grids with unified 1px hairline metric strips, eliminates all glowing dots /
+  `rounded-2xl` bloat, converts detail & complex form modals (Machines, Nodes,
+  Subscription Sources, Groups, Outbounds, Certificates, Plans, Users) into right-side
+  Linear inspector/editor drawers, upgrades Templates to a unified Linear IDE panel,
+  and aligns Settings & User Portal (`portal.css`) to hairline-divided Linear layouts
+  with 100% RPC/data contract parity.
 
 Panel `v1.1.70` (Agent remains `v1.1.32`):
 - Fixes the Subscriptions Template editor (`@codemirror/state` duplicate instance
