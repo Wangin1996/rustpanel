@@ -4,7 +4,16 @@ This repository contains the Linux x86_64 deployment artifacts for
 `rust-panel` and `xboard-node`. Files are kept at the repository root because
 the installers download them directly through GitHub Raw.
 
-Current releases: panel `v1.1.68` (restores `v1.1.66` UI baseline), Agent `v1.1.32`.
+Current releases: panel `v1.1.69`, Agent `v1.1.32`.
+
+Panel `v1.1.69` (Agent remains `v1.1.32`):
+- Refactors `xboard-admin` and `user-portal` around Linear's restrained, high-density
+  visual language while keeping 100% of existing functionality, forms, modals, and
+  backend RPC contracts unchanged: neutral obsidian dark & crisp light surfaces,
+  1px hairline borders, Linear Indigo default accent (`#5E6AD2` / `#6270DF`, custom
+  theme override preserved), compact 48px header / 224px sidebar / 32px controls,
+  unified `8px`/`6px` radii, WCAG AA contrast & `focus-visible` keyboard accessibility,
+  and mobile/keyboard up/down buttons in `SortableList`.
 
 Panel `v1.1.66` and Agent `v1.1.32`:
 - Panel `v1.1.66` fixes `/healthz` loopback version reporting during `install-panel.sh`
