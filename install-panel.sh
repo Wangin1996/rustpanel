@@ -36,6 +36,7 @@ BACKUP_READY=0
 BACKUP_DIR=""
 INSTALL_PHASE="preflight"
 cleanup() {
+  set +e
   if [ "$INSTALL_OK" = 0 ] && [ -n "${RP_INSTALL_RESULT:-}" ]; then
     printf '%s\n' "$INSTALL_PHASE" > "$RP_INSTALL_RESULT"
   fi
@@ -222,8 +223,8 @@ else:
             if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?", host):
                 raise SystemExit("APP_BIND has an invalid host")
 
-if not port_text.isdigit() or not 0 <= int(port_text) <= 65535:
-    raise SystemExit("APP_BIND port is outside 0-65535")
+if not port_text.isdigit() or not 1 <= int(port_text) <= 65535:
+    raise SystemExit("APP_BIND port is outside 1-65535")
 PY
 }
 
@@ -487,7 +488,7 @@ systemctl restart rust-panel
 HEALTH_BIND="$(sed -n 's/^APP_BIND=//p' "$ENV_FILE" | tail -n 1)"
 HEALTH_BIND="${HEALTH_BIND:-127.0.0.1:8080}"
 case "$HEALTH_BIND" in
-  0.0.0.0:*) HEALTH_BIND="127.0.0.1:${HEALTH_BIND##*:}" ;;
+  0.0.0.0:*|\*:*) HEALTH_BIND="127.0.0.1:${HEALTH_BIND##*:}" ;;
   \[::\]:*) HEALTH_BIND="[::1]:${HEALTH_BIND##*:}" ;;
 esac
 stable=0
@@ -513,7 +514,13 @@ fi
 if [ "$NEW_ADMIN" = 1 ] && [ -f "$ENV_FILE" ]; then
   (
     umask 077
-    grep -v '^BOOTSTRAP_ADMIN_PASSWORD=' "$ENV_FILE" > "$ENV_FILE.tmp" || true
+    grep_rc=0
+    grep -v '^BOOTSTRAP_ADMIN_PASSWORD=' "$ENV_FILE" > "$ENV_FILE.tmp" || grep_rc=$?
+    if [ "$grep_rc" -gt 1 ] || [ ! -s "$ENV_FILE.tmp" ]; then
+      rm -f "$ENV_FILE.tmp"
+      echo "failed to strip BOOTSTRAP_ADMIN_PASSWORD from $ENV_FILE" >&2
+      exit 1
+    fi
     chown rust-panel:rust-panel "$ENV_FILE.tmp"
     chmod 600 "$ENV_FILE.tmp"
     mv -f "$ENV_FILE.tmp" "$ENV_FILE"

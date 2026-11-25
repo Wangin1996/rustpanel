@@ -1,37 +1,37 @@
 {
   "format": 1,
-  "panel_version": "v1.1.75",
-  "agent_version": "v1.1.32",
-  "published_at": 1795567432,
-  "expires_at": 1803343432,
+  "panel_version": "v1.1.76",
+  "agent_version": "v1.1.33",
+  "published_at": 1795588905,
+  "expires_at": 1803364905,
   "files": {
     "rust-panel": {
-      "size": 14270328,
-      "sha256": "302dd248a3c2662296a33ea89f625225f24a2c283b56c79c41fff7b7f2af4860"
+      "size": 14275832,
+      "sha256": "2a6348b56e91fee49a946f2dbbe0e80d865e949741a12e7f970f4094dcf96ca0"
     },
     "web.tar.gz": {
-      "size": 593542,
-      "sha256": "8e4e33958c8c666abd7d9d46ad6f88e92542367da2e8840b4d21dcd9d886f35d"
+      "size": 594127,
+      "sha256": "10254dea2a9947f1a5a8294c3d22bc7104503b3e64a4ec86506de303742261ba"
     },
     "xboard-node": {
       "size": 68190370,
-      "sha256": "8bacb6910fb4b15612c90d23f101e1c22c7a5c7ba92025d50f7e236aa5c21dec"
+      "sha256": "142f9b879c605394fff6a0649973b192ab63888737705f896d51c2979ce6b20c"
     },
     "xboard-node.sha256": {
       "size": 78,
-      "sha256": "b00e28e33cf22360e17e920132eada16ca56d8385b7b52b3da88bc86822be0fb"
+      "sha256": "f4316b3ff76192c81dc2d491d55b87bcc9445e030e9502a11112401d98b7779b"
     },
     "xboard-node.version": {
       "size": 8,
-      "sha256": "e6ce979e3f49a31d0256e8c68fdcbfe42f8c0382bd94c8993a30eb3c6ea69b15"
+      "sha256": "10ad1fa0f6842e2e27ef0288bb4e4c866457794f500d1c8b00fe0ca5b4e6ff24"
     },
     "install-panel.sh": {
-      "size": 22070,
-      "sha256": "13585cb91f7d17a8872774455c8db4159a087ade0996a316613dd96e6fe314a0"
+      "size": 22287,
+      "sha256": "9b2cfb63165588842870f2c1e08c51a72671e74f1fc3538e403879cceb0a6b3d"
     },
     "install-node.sh": {
-      "size": 10753,
-      "sha256": "bdca41399d09e64f5daf8e88b9c2e15c01e6783d3e814c2d72dedc28ce9fe52f"
+      "size": 10930,
+      "sha256": "e6388c3c75f48904182fd3f79286533c302f836834d4a8339f03fc95aae55f85"
     },
     "rust-panel.service": {
       "size": 912,
@@ -46,8 +46,8 @@
       "sha256": "21f8bfecd5ad297ae5e29cd6f6424615efc3505dc88a28b968153624e8a5efac"
     },
     "release-verify.py": {
-      "size": 14292,
-      "sha256": "85a681977ae1b4a8bb92ef87ee02ad44d56bf24e3b0e8766ce4472b27df567d5"
+      "size": 14374,
+      "sha256": "b8828a126144030837e3633e3815ad59c4517fd351fe971802579018b4b6f7b1"
     },
     "panel-update-helper.sh": {
       "size": 119,

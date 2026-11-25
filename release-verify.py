@@ -212,7 +212,10 @@ def apply_request():
     with (root / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:
-            descriptor = os.open(request_path, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                descriptor = os.open(request_path, os.O_RDONLY | os.O_NOFOLLOW)
+            except FileNotFoundError:
+                return
             with os.fdopen(descriptor, "rb") as handle:
                 metadata = os.fstat(handle.fileno())
                 if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024:

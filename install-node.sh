@@ -39,7 +39,7 @@ fi
 [[ "${NODE_ID:-${MACHINE_ID}}" =~ ^[1-9][0-9]*$ ]] || die "node or machine id must be positive"
 case "$BASE" in https://*) ;; *) die "download base must use HTTPS" ;; esac
 case "$URL" in https://*) ;; http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://\[::1\]:*|http://\[::1\]) ;; *) die "panel URL must use HTTPS (HTTP is allowed only for localhost development)" ;; esac
-[[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\\'* ]] || die "panel URL contains unsafe characters"
+[[ "$URL" != *$'\n'* && "$URL" != *$'\r'* && "$URL" != *'"'* && "$URL" != *'\'* ]] || die "panel URL contains unsafe characters"
 [[ "$TOKEN" =~ ^[A-Za-z0-9._~-]+$ ]] || die "token contains unsafe characters"
 [ "$(uname -m)" = "x86_64" ] || die "only Linux x86_64 is supported"
 for command_name in curl systemctl sha256sum awk install python3 getent groupadd useradd chown; do
@@ -90,7 +90,10 @@ safe_replace_file() {
 }
 
 rollback_install() {
+  trap - ERR
+  set +e
   [ "$BACKUP_READY" -eq 1 ] || return 0
+  BACKUP_READY=0
   echo ">> rolling back failed installation" >&2
   systemctl stop xboard-node >/dev/null 2>&1 || true
   for entry in xboard-node config.yml credentials.env xboard-node.service; do
@@ -122,7 +125,12 @@ rollback_install() {
 on_error() {
   code=$?
   trap - ERR
-  rollback_install
+  set +e
+  if [ "$BACKUP_READY" -eq 1 ]; then
+    rollback_install
+  elif [ "$WAS_ACTIVE" -eq 1 ]; then
+    systemctl restart xboard-node >/dev/null 2>&1 || true
+  fi
   exit "$code"
 }
 trap on_error ERR
@@ -136,7 +144,7 @@ value = urllib.parse.urlsplit(sys.argv[1])
 if value.scheme != 'https' or not value.hostname or value.username or value.password or value.query or value.fragment:
     raise SystemExit('release base must use HTTPS without credentials or query parameters')
 PY
-  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 65536 "$BASE/release.json" -o "$STAGE/release.json"
+  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 65536 "${BASE%/}/release.json" -o "$STAGE/release.json"
   EXPECTED_VERIFIER="$(python3 - "$STAGE/release.json" <<'PY'
 import hashlib, json, re, sys
 raw = open(sys.argv[1], 'rb').read(65537)
@@ -148,7 +156,7 @@ if not re.fullmatch('[0-9a-f]{64}', item['sha256']) or not 0 < item['size'] <= 1
 print(item['sha256'])
 PY
 )"
-  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 1048576 "$BASE/release-verify.py" -o "$STAGE/release-verify.py"
+  curl --proto '=https' --tlsv1.2 -fsS --retry 3 --max-time 30 --max-filesize 1048576 "${BASE%/}/release-verify.py" -o "$STAGE/release-verify.py"
   [ "$(sha256sum "$STAGE/release-verify.py" | awk '{print $1}')" = "$EXPECTED_VERIFIER" ] || die "release verifier SHA-256 mismatch"
   python3 "$STAGE/release-verify.py" manifest "$STAGE" >/dev/null
 }
@@ -271,7 +279,6 @@ done
 if [ "$stable" -lt 10 ]; then
   journalctl -u xboard-node -n 30 --no-pager || true
   rollback_install
-  BACKUP_READY=0
   die "service did not remain active"
 fi
 
