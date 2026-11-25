@@ -1,17 +1,17 @@
 {
   "format": 1,
-  "panel_version": "v1.1.74",
+  "panel_version": "v1.1.75",
   "agent_version": "v1.1.32",
-  "published_at": 1795511480,
-  "expires_at": 1803287480,
+  "published_at": 1795567432,
+  "expires_at": 1803343432,
   "files": {
     "rust-panel": {
       "size": 14270328,
-      "sha256": "a037e2aa6e11bea3e3106869390667fa97f51fc98ba7210db8ec4a173a03c923"
+      "sha256": "302dd248a3c2662296a33ea89f625225f24a2c283b56c79c41fff7b7f2af4860"
     },
     "web.tar.gz": {
-      "size": 588454,
-      "sha256": "6b3d5958ae968e678d2978019e52ecc8060afb86cb61a1cf2f705611ddcf5abd"
+      "size": 593542,
+      "sha256": "8e4e33958c8c666abd7d9d46ad6f88e92542367da2e8840b4d21dcd9d886f35d"
     },
     "xboard-node": {
       "size": 68190370,
