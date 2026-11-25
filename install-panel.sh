@@ -26,7 +26,7 @@ command -v tar >/dev/null || { echo "tar is required"; exit 1; }
 command -v systemctl >/dev/null || { echo "systemd is required"; exit 1; }
 
 [ ! -L "/opt" ] || { echo "/opt must not be a symlink" >&2; exit 1; }
-mkdir -p "$INSTALL_DIR"
+install -d -o root -g root -m 755 "$INSTALL_DIR"
 STAGE="$(umask 077 && mktemp -d /opt/.rust-panel-install.XXXXXX)"
 chmod 700 "$STAGE"
 WAS_ACTIVE=0
@@ -435,7 +435,7 @@ rm -f /etc/systemd/system/rust-panel-geoip-update.service \
 echo ">> [2/4] installing binary and web assets ..."
 INSTALL_STARTED=1
 INSTALL_PHASE="install"
-mkdir -p "$INSTALL_DIR/xboard-admin"
+install -d -o root -g root -m 755 "$INSTALL_DIR/xboard-admin"
 BACKUP_DIR="$STAGE/previous"
 mkdir -p "$BACKUP_DIR"
 [ -d "$INSTALL_DIR/xboard-admin/dist" ] && cp -a "$INSTALL_DIR/xboard-admin/dist" "$BACKUP_DIR/admin-dist"
@@ -455,7 +455,7 @@ mv "$STAGE/web/xboard-admin/dist" "$INSTALL_DIR/xboard-admin/dist"
 mv "$STAGE/web/user-portal" "$INSTALL_DIR/user-portal"
 mv "$STAGE/rust-panel" "$INSTALL_DIR/rust-panel"
 chmod +x "$INSTALL_DIR/rust-panel"
-mv "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
+install -o root -g root -m 644 "$STAGE/rust-panel.service" /etc/systemd/system/rust-panel.service
 if ! getent passwd rust-panel >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/rust-panel --shell /usr/sbin/nologin rust-panel
 fi

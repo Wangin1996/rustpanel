@@ -178,7 +178,12 @@ def recover_interrupted_update():
         target = root / "status.json"
         if not target.exists():
             return
-        value = json.loads(target.read_text())
+        try:
+            value = json.loads(target.read_text())
+        except (OSError, ValueError):
+            value = {}
+        if not isinstance(value, dict):
+            value = {}
         if value.get("phase") not in ("queued", "downloading", "installing"):
             return
         value.update(phase="failed", updated_at=int(time.time()), message="更新服务意外退出。请检查当前版本和服务日志后重试；未确认回滚结果。")
@@ -186,6 +191,12 @@ def recover_interrupted_update():
         temporary.write_text(json.dumps(value), encoding="utf-8")
         temporary.chmod(0o644)
         os.replace(temporary, target)
+        request_path = Path("/var/lib/rust-panel/panel-update.request")
+        try:
+            if request_path.is_symlink() or request_path.is_file():
+                request_path.unlink()
+        except OSError:
+            pass
 
 
 def apply_request():
@@ -221,6 +232,9 @@ def apply_request():
                 if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024:
                     raise ValueError("invalid update request file")
                 request = json.loads(handle.read(1025), object_pairs_hook=unique_object)
+                if not isinstance(request, dict):
+                    request = {}
+                    raise ValueError("invalid update request")
             request_path.unlink()
             if not re.fullmatch(r"panel-update-[0-9a-f]{48}", request.get("request_id", "")) or not DIGEST.fullmatch(request.get("manifest_sha256", "")):
                 raise ValueError("invalid update request")
@@ -259,8 +273,11 @@ def apply_request():
                     raise RuntimeError(installer_failure(result, phase))
             status("succeeded", "Panel update completed and health check passed")
         except Exception as error:
-            if request_path.exists() or request_path.is_symlink():
-                request_path.unlink()
+            try:
+                if request_path.is_symlink() or request_path.is_file():
+                    request_path.unlink()
+            except OSError:
+                pass
             status("failed", str(error)[:240])
             raise
 
